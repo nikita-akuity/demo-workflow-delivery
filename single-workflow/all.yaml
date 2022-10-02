@@ -1,0 +1,427 @@
+apiVersion: v1
+data:
+  bucket: default
+  db-connection-secret: db-connection
+  roleARN: default
+  table-name: default
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: default-cm
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: webhook
+spec:
+  service:
+    ports:
+    - port: 12000
+      targetPort: 12000
+  webhook:
+    greet-and-count:
+      endpoint: /greet-and-count
+      method: POST
+      port: "12000"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  dependencies:
+  - eventName: greet-and-count
+    eventSourceName: webhook
+    name: wh-dep
+  template:
+    serviceAccountName: operate-workflow-sa
+  triggers:
+  - template:
+      argoWorkflow:
+        operation: submit
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: body
+            dependencyName: wh-dep
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: greet-and-count-
+            spec:
+              workflowTemplateRef:
+                name: single-wf-template
+      name: webhook-workflow-trigger
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: container-templates
+spec:
+  templates:
+  - container:
+      args: |-
+        {{=
+
+          toJson(
+            ["--greeting", "{{inputs.parameters.greeting}}"] +
+            map(sprig.splitList(inputs.parameters.names), {"--name" + #}) +
+            ["--output-file", "/tmp/out.txt"]
+          )
+        }}
+      command:
+      - python
+      - greet.py
+      image: ghcr.io/nikita-akuity/greetings:sha-e23cb27
+    inputs:
+      parameters:
+      - name: bucket-name
+      - name: roleARN
+      - default: ""
+        name: key-prefix
+      - default: default
+        name: greeting
+      - default: Alice,Bob
+        name: names
+    name: greet
+    outputs:
+      artifacts:
+      - archive:
+          none: {}
+        name: output-file
+        path: /tmp/out.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: |-
+            {{inputs.parameters.key-prefix}}/
+
+              {{workflow.creationTimestamp.Y}}-
+              {{workflow.creationTimestamp.m}}-
+              {{workflow.creationTimestamp.d}}/
+            {{workflow.name}}/ {{pod.name}}.txt
+          roleARN: '{{inputs.parameters.roleARN}}'
+      parameters:
+      - name: key
+        value: |-
+          {{inputs.parameters.key-prefix}}/
+
+            {{workflow.creationTimestamp.Y}}-
+            {{workflow.creationTimestamp.m}}-
+            {{workflow.creationTimestamp.d}}/
+          {{workflow.name}}/ {{pod.name}}.txt
+  - container:
+      args:
+      - --input-file
+      - /tmp/in.txt
+      - --output-file
+      - /tmp/out.txt
+      - --search
+      - '{{inputs.parameters.search}}'
+      - --replace
+      - '{{inputs.parameters.replace}}'
+      command:
+      - python
+      - rt.py
+      image: ghcr.io/nikita-akuity/replace-text:sha-e23cb27
+    inputs:
+      artifacts:
+      - name: input-file
+        path: /tmp/in.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: '{{inputs.parameters.key}}'
+          roleARN: '{{inputs.parameters.roleARN}}'
+      parameters:
+      - name: bucket-name
+      - name: roleARN
+      - name: key
+      - default: ""
+        name: key-prefix
+      - default: default
+        name: search
+      - default: default
+        name: replace
+    name: replace-text
+    outputs:
+      artifacts:
+      - name: output-file
+        path: /tmp/out.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: |-
+            {{inputs.parameters.key-prefix}}/
+
+              {{workflow.creationTimestamp.Y}}-
+              {{workflow.creationTimestamp.m}}-
+              {{workflow.creationTimestamp.d}}/
+            {{workflow.name}}/ {{pod.name}}.txt
+          roleARN: '{{inputs.parameters.roleARN}}'
+      parameters:
+      - name: key
+        value: |-
+          {{inputs.parameters.key-prefix}}/
+
+            {{workflow.creationTimestamp.Y}}-
+            {{workflow.creationTimestamp.m}}-
+            {{workflow.creationTimestamp.d}}/
+          {{workflow.name}}/ {{pod.name}}.txt
+  - container:
+      args:
+      - --input-file
+      - /tmp/in.txt
+      - --string
+      - '{{inputs.parameters.string}}'
+      - '>/tmp/result'
+      - 2>/tmp/err.log
+      command:
+      - python
+      - count.py
+      image: ghcr.io/nikita-akuity/count:sha-e23cb27
+    inputs:
+      artifacts:
+      - name: input-file
+        path: /tmp/in.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: '{{inputs.parameters.key}}'
+          roleARN: '{{inputs.parameters.roleARN}}'
+      parameters:
+      - name: bucket-name
+      - name: roleARN
+      - name: key
+      - default: default
+        name: string
+    name: count
+    outputs:
+      parameters:
+      - name: number
+        valueFrom:
+          default: "0"
+          path: /tmp/result
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: script-templates
+spec:
+  templates:
+  - inputs:
+      parameters:
+      - default: '["0","0","0"]'
+        name: numbers
+    name: sum
+    script:
+      command:
+      - python
+      image: python:3
+      source: |
+        import json
+        numbers = json.loads('{{inputs.parameters.numbers}}')
+        print(sum(map(int,numbers)))
+  - inputs:
+      artifacts:
+      - name: sql
+        path: /tmp/query.sql
+        raw:
+          data: |
+            CREATE TABLE IF NOT EXISTS {{inputs.parameters.table-name}} (
+              Id int NOT NULL AUTO_INCREMENT,
+              WorkflowName varchar(255) NOT NULL,
+              WorkflowDateTime datetime NOT NULL,
+              SumHello int(32),
+              SumGoodbye int(32),
+              PRIMARY KEY (Id)
+            );
+            INSERT INTO {{inputs.parameters.table-name}} (WorkflowName, WorkflowDateTime, SumHello, SumGoodbye)
+            VALUES (
+              '{{workflow.name}}',
+              '{{workflow.creationTimestamp.Y}}-{{workflow.creationTimestamp.m}}-{{workflow.creationTimestamp.d}} {{workflow.creationTimestamp.H}}:{{workflow.creationTimestamp.M}}:{{workflow.creationTimestamp.S}}',
+              {{inputs.parameters.sum-hello}},
+              {{inputs.parameters.sum-goodbye}}
+            );
+      parameters:
+      - name: table-name
+      - name: db-connection-secret
+      - default: "NULL"
+        name: sum-hello
+      - default: "NULL"
+        name: sum-goodbye
+    name: write-to-db
+    script:
+      command:
+      - bash
+      env:
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            key: host
+            name: '{{inputs.parameters.db-connection-secret}}'
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            key: port
+            name: '{{inputs.parameters.db-connection-secret}}'
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            key: database
+            name: '{{inputs.parameters.db-connection-secret}}'
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            key: user
+            name: '{{inputs.parameters.db-connection-secret}}'
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: password
+            name: '{{inputs.parameters.db-connection-secret}}'
+      image: mysql:8-debian
+      source: |
+        mysql --host=$DB_HOST --port=$DB_PORT --user=$DB_USER --password=$DB_PASSWORD $DB_NAME < /tmp/query.sql
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: single-wf-template
+spec:
+  arguments:
+    parameters:
+    - name: input-payload
+      value: '[]'
+    - name: cm-name
+      value: default-cm
+  entrypoint: single-wf
+  templates:
+  - dag:
+      tasks:
+      - arguments:
+          parameters:
+          - name: bucket
+            valueFrom:
+              configMapKeyRef:
+                key: bucket
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: roleARN
+            valueFrom:
+              configMapKeyRef:
+                key: roleARN
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: greeting
+            value: hello
+          - name: names
+            value: '{{item}}'
+        name: greetings
+        templateRef:
+          name: container-templates
+          template: greet
+        withParam: '{{workflow.inputs.parameters.input-payload}}'
+      - arguments:
+          parameters:
+          - name: bucket
+            valueFrom:
+              configMapKeyRef:
+                key: bucket
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: roleARN
+            valueFrom:
+              configMapKeyRef:
+                key: roleARN
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: search
+            value: hello
+          - name: replace
+            value: goodbye
+          - name: key
+            value: '{{item}}'
+        name: goodbyes
+        templateRef:
+          name: container-templates
+          template: replace-text
+        withParam: '{{tasks.greetings.outputs.parameters.key}}'
+      - arguments:
+          parameters:
+          - name: bucket
+            valueFrom:
+              configMapKeyRef:
+                key: bucket
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: roleARN
+            valueFrom:
+              configMapKeyRef:
+                key: roleARN
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: string
+            value: hello
+          - name: key
+            value: '{{item}}'
+        name: count-hellos
+        templateRef:
+          name: container-templates
+          template: count
+        withParam: '{{tasks.greetings.outputs.parameters.key}}'
+      - arguments:
+          parameters:
+          - name: bucket
+            valueFrom:
+              configMapKeyRef:
+                key: bucket
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: roleARN
+            valueFrom:
+              configMapKeyRef:
+                key: roleARN
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: string
+            value: goodbye
+          - name: key
+            value: '{{item}}'
+        name: count-goodbyes
+        templateRef:
+          name: container-templates
+          template: count
+        withParam: '{{tasks.goodbyes.outputs.parameters.key}}'
+      - arguments:
+          parameters:
+          - name: numbers
+            value: '{{tasks.count-hellos.outputs.parameters.number}}'
+        name: sum-hellos
+        templateRef:
+          name: script-templates
+          template: sum
+      - arguments:
+          parameters:
+          - name: numbers
+            value: '{{tasks.count-goodbyes.outputs.parameters.number}}'
+        name: sum-goodbyes
+        templateRef:
+          name: script-templates
+          template: sum
+      - arguments:
+          parameters:
+          - name: table-name
+            valueFrom:
+              configMapKeyRef:
+                key: table-name
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: db-connection-secret}
+            valueFrom:
+              configMapKeyRef:
+                key: db-connection-secret
+                name: '{{workflow.inputs.parameters.cm-name}}'
+          - name: sum-hello
+            value: '{{tasks.sum-hellos.outputs.result}}'
+          - name: sum-goodbye
+            value: '{{tasks.sum-goodbyes.outputs.result}}'
+        name: write-result
+        templateRef:
+          name: script-templates
+          template: write-to-db
+    name: single-wf
