@@ -1,0 +1,42 @@
+name: Render Manifests
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  render-manifests:
+    name: Render manifests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, stage]
+        folder: [single-workflow]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # fetch-depth: 0 needed to get all branches
+          fetch-depth: 0
+      - uses: fregante/setup-git-user@v1
+      - name: Render manifests
+        run: |
+          kustomize build ${{ matrix.folder }}/env/${{ matrix.env }} > /tmp/all.yaml
+          if ! git checkout env/${{ matrix.env }} -- ; then
+            git checkout --orphan env/${{ matrix.env }}
+            git rm -rf ${{ matrix.folder }}/*
+            mkdir -p ${{ matrix.folder }}
+            cp /tmp/all.yaml ${{ matrix.folder }}/
+            git add ${{ matrix.folder }}/*
+            git commit -m "${{ github.event.head_commit.message }}"
+            git push --set-upstream origin env/${{ matrix.env }}
+          else
+            cp /tmp/all.yaml ${{ matrix.folder }}/
+          fi 
+      - name: Deploy to ${{ matrix.env }}
+        run: |
+          if ! git diff --quiet HEAD ; then 
+            git add ${{ matrix.folder }}/*
+            git commit -m "${{ github.event.head_commit.message }}"
+            git push --set-upstream origin env/${{ matrix.env }}
+          fi
