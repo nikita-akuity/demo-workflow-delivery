@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        env: [dev, stage]
+        env: [dev, stage, prod]
         folder: [single-workflow]
 
     steps:
@@ -24,19 +24,12 @@ jobs:
           kustomize build ${{ matrix.folder }}/env/${{ matrix.env }} > /tmp/all.yaml
           if ! git checkout env/${{ matrix.env }} -- ; then
             git checkout --orphan env/${{ matrix.env }}
-            git rm -rf ${{ matrix.folder }}/*
+            git rm -rf .
             mkdir -p ${{ matrix.folder }}
-            cp /tmp/all.yaml ${{ matrix.folder }}/
-            git add ${{ matrix.folder }}/*
-            git commit -m "${{ github.event.head_commit.message }}"
-            git push --set-upstream origin env/${{ matrix.env }}
-          else
-            cp /tmp/all.yaml ${{ matrix.folder }}/
           fi 
+            cp /tmp/all.yaml ${{ matrix.folder }}/
       - name: Deploy to ${{ matrix.env }}
         run: |
-          if ! git diff --quiet HEAD ; then 
-            git add ${{ matrix.folder }}/*
-            git commit -m "${{ github.event.head_commit.message }}"
-            git push --set-upstream origin env/${{ matrix.env }}
-          fi
+          git add ${{ matrix.folder }}/*
+          git commit -m "${{ github.event.head_commit.message }}"
+          git push --set-upstream origin env/${{ matrix.env }}
