@@ -87,7 +87,7 @@ spec:
       command:
       - python
       - greet.py
-      image: ghcr.io/nikita-akuity/greetings:latest
+      image: ghcr.io/nikita-akuity/greetings:0.0.1-rc.1
     inputs:
       parameters:
       - name: bucket-name
@@ -138,7 +138,7 @@ spec:
       command:
       - python
       - rt.py
-      image: ghcr.io/nikita-akuity/replace-text:latest
+      image: ghcr.io/nikita-akuity/replace-text:0.0.1-rc.1
     inputs:
       artifacts:
       - name: input-file
@@ -194,7 +194,7 @@ spec:
       command:
       - python
       - count.py
-      image: ghcr.io/nikita-akuity/count:latest
+      image: ghcr.io/nikita-akuity/count:0.0.1-rc.1
     inputs:
       artifacts:
       - name: input-file
