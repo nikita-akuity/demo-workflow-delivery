@@ -10,6 +10,18 @@ metadata:
     workflows.argoproj.io/configmap-type: Parameter
   name: default-cm
 ---
+apiVersion: v1
+data:
+  bucket: dev
+  db-connection-secret: db-connection-dev
+  roleARN: dev
+  table-name: dev
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: dev-config
+---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
 metadata:
@@ -294,10 +306,10 @@ metadata:
 spec:
   arguments:
     parameters:
+    - name: cm-name
+      value: dev-config
     - name: input-payload
       value: '[]'
-    - name: cm-name
-      value: default-cm
   entrypoint: single-wf
   templates:
   - dag:
