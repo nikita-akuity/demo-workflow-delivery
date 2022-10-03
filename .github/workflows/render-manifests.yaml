@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         env: [dev, stage, prod]
-        folder: [single-workflow]
+        folder: [single-workflow, many-workflows]
 
     steps:
       - uses: actions/checkout@v3
