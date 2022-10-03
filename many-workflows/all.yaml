@@ -1,3 +1,15 @@
+apiVersion: v1
+data:
+  bucket: default
+  db-connection-secret: db-connection-example
+  roleARN: default
+  table-name: default
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: default-cm
+---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
@@ -44,7 +56,7 @@ spec:
       command:
       - python
       - rt.py
-      image: replace-text:latest
+      image: ghcr.io/nikita-akuity/replace-text:sha-5a0f611
     inputs:
       artifacts:
       - name: input-file
@@ -126,7 +138,7 @@ spec:
       command:
       - python
       - greet.py
-      image: greetings:latest
+      image: ghcr.io/nikita-akuity/greetings:sha-5a0f611
     inputs:
       parameters:
       - name: bucket-name
