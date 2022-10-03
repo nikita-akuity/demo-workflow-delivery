@@ -31,7 +31,7 @@ data:
   DB_USER: ZGF0YWJhc2VfdXNlcg==
 kind: Secret
 metadata:
-  name: db-connection-example-8fktmm9f7b
+  name: db-connection-example
 type: Opaque
 ---
 apiVersion: argoproj.io/v1alpha1
