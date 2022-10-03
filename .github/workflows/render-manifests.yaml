@@ -45,3 +45,4 @@ jobs:
           commit-message: ${{ github.event.head_commit.message }}
           base: env/${{ matrix.env }}
           branch: deploy-pr/${{ matrix.folder }}/env/${{ matrix.env }}
+          delete-branch: true
