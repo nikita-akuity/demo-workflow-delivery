@@ -1,4 +1,4 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - https://github.com/nikita-akuity/demo-workflow//manifests/many-workflows/?ref=3a93ebba67249cdd1bfbaf77d6c9824fe1fe887f
+  - https://github.com/nikita-akuity/demo-workflow//manifests/many-workflows/?ref=96c337c58da3f33ae4e4a843a464c22181910a35
