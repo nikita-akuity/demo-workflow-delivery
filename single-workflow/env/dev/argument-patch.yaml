@@ -1,0 +1,8 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: single-wf-template
+spec:
+  arguments:
+    parameters:
+    - {name: cm-name, value: dev-config}

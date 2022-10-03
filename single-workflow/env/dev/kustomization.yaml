@@ -4,6 +4,24 @@ kind: Kustomization
 resources:
 - ../../base
 
+configMapGenerator:
+  - name: dev-config
+    literals:
+    - bucket=dev
+    - roleARN=dev
+    - table-name=dev
+    - db-connection-secret=db-connection-dev
+    options:
+      disableNameSuffixHash: true
+      labels:
+         workflows.argoproj.io/configmap-type: Parameter
+
+openapi:
+  path: https://raw.githubusercontent.com/argoproj/argo-schema-generator/main/schema/argo_workflows_kustomize_schema.json
+
+patchesStrategicMerge:
+  - argument-patch.yaml
+
 images:
 - name: count
   newName: ghcr.io/nikita-akuity/count
