@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
   bucket: default
-  db-connection-secret: db-connection
+  db-connection-secret: db-connection-example
   roleARN: default
   table-name: default
 kind: ConfigMap
@@ -9,6 +9,18 @@ metadata:
   labels:
     workflows.argoproj.io/configmap-type: Parameter
   name: default-cm
+---
+apiVersion: v1
+data:
+  DB_HOST: ZGIuaG9zdG5hbQ==
+  DB_NAME: ZGF0YWJhc2VfbmFtZQ==
+  DB_PASSWORD: c2VjcmV0UGFzc1cwcmQ=
+  DB_PORT: MzYwMA==
+  DB_USER: ZGF0YWJhc2VfdXNlcg==
+kind: Secret
+metadata:
+  name: db-connection-example
+type: Opaque
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
