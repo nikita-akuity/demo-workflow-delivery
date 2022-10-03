@@ -11,6 +11,7 @@ jobs:
     name: Render manifests
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix:
         env: [dev, stage, prod]
         folder: [single-workflow, many-workflows]
