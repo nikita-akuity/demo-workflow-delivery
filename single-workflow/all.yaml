@@ -99,7 +99,7 @@ spec:
       command:
       - python
       - greet.py
-      image: ghcr.io/nikita-akuity/greetings:sha-e23cb27
+      image: ghcr.io/nikita-akuity/greetings:sha-5a0f611
     inputs:
       parameters:
       - name: bucket-name
@@ -150,7 +150,7 @@ spec:
       command:
       - python
       - rt.py
-      image: ghcr.io/nikita-akuity/replace-text:sha-e23cb27
+      image: ghcr.io/nikita-akuity/replace-text:sha-5a0f611
     inputs:
       artifacts:
       - name: input-file
@@ -206,7 +206,7 @@ spec:
       command:
       - python
       - count.py
-      image: ghcr.io/nikita-akuity/count:sha-e23cb27
+      image: ghcr.io/nikita-akuity/count:sha-5a0f611
     inputs:
       artifacts:
       - name: input-file
