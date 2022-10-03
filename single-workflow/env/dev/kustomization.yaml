@@ -5,30 +5,30 @@ resources:
 - ../../base
 
 configMapGenerator:
-  - name: dev-config
-    literals:
-    - bucket=dev
-    - roleARN=dev
-    - table-name=dev
-    - db-connection-secret=db-connection-dev
-    options:
-      disableNameSuffixHash: true
-      labels:
-         workflows.argoproj.io/configmap-type: Parameter
+- literals:
+  - bucket=dev
+  - roleARN=dev
+  - table-name=dev
+  - db-connection-secret=db-connection-dev
+  name: dev-config
+  options:
+    disableNameSuffixHash: true
+    labels:
+      workflows.argoproj.io/configmap-type: Parameter
 
 openapi:
   path: https://raw.githubusercontent.com/argoproj/argo-schema-generator/main/schema/argo_workflows_kustomize_schema.json
 
 patchesStrategicMerge:
-  - argument-patch.yaml
+- argument-patch.yaml
 
 images:
 - name: count
   newName: ghcr.io/nikita-akuity/count
-  newTag: sha-e23cb27
+  newTag: sha-5a0f611
 - name: greetings
   newName: ghcr.io/nikita-akuity/greetings
-  newTag: sha-e23cb27
+  newTag: sha-5a0f611
 - name: replace-text
   newName: ghcr.io/nikita-akuity/replace-text
-  newTag: sha-e23cb27
+  newTag: sha-5a0f611
