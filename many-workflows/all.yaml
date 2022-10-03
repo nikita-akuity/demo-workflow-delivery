@@ -3,7 +3,83 @@ kind: WorkflowTemplate
 metadata:
   name: goodbye-wf-template
 spec:
-  templates: []
+  arguments:
+    parameters:
+    - name: cm-name
+      value: default-cm
+    - name: file
+      value: ""
+  entrypoint: goodbye-wf
+  templates:
+  - arguments:
+      parameters:
+      - name: bucket
+        valueFrom:
+          configMapKeyRef:
+            key: bucket
+            name: '{{workflow.inputs.parameters.cm-name}}'
+      - name: roleARN
+        valueFrom:
+          configMapKeyRef:
+            key: roleARN
+            name: '{{workflow.inputs.parameters.cm-name}}'
+      - name: key
+        value: '{{workflow.inputs.parameters.input-payload}}'
+      - name: search
+        value: hello
+      - name: replace
+        value: goodbye
+    name: goodbye-wf
+    template: replace-text
+  - container:
+      args:
+      - --input-file
+      - /tmp/in.txt
+      - --output-file
+      - /tmp/out.txt
+      - --search
+      - '{{inputs.parameters.search}}'
+      - --replace
+      - '{{inputs.parameters.replace}}'
+      command:
+      - python
+      - rt.py
+      image: replace-text:latest
+    inputs:
+      artifacts:
+      - name: input-file
+        path: /tmp/in.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: '{{inputs.parameters.key}}'
+          roleARN: '{{inputs.parameters.roleARN}}'
+      parameters:
+      - name: bucket-name
+      - name: roleARN
+      - name: key
+      - default: ""
+        name: key-prefix
+      - default: default
+        name: search
+      - default: default
+        name: replace
+    name: replace-text
+    outputs:
+      artifacts:
+      - name: output-file
+        path: /tmp/out.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: |-
+            {{inputs.parameters.key-prefix}}/
+
+              {{workflow.creationTimestamp.Y}}-
+              {{workflow.creationTimestamp.m}}-
+              {{workflow.creationTimestamp.d}}/
+            {{workflow.name}}/ {{pod.name}}.txt
+          roleARN: '{{inputs.parameters.roleARN}}'
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
