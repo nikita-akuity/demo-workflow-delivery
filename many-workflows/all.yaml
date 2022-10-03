@@ -1,6 +1,7 @@
 apiVersion: v1
 data:
   bucket: default
+  bucket-key: single-wf
   db-connection-secret: db-connection-example
   roleARN: default
   table-name: default
@@ -21,6 +22,49 @@ kind: Secret
 metadata:
   name: db-connection-example
 type: Opaque
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: s3-new-files-sqs
+spec:
+  sqs:
+    s3-new-files:
+      jsonBody: true
+      queue: my-fake-queue-2
+      region: us-east-1
+      waitTimeSeconds: 20
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: aws-sqs
+spec:
+  dependencies:
+  - eventName: example
+    eventSourceName: s3-new-files-sqs
+    name: sqs-dep
+  template:
+    serviceAccountName: operate-workflow-sa
+  triggers:
+  - template:
+      argoWorkflow:
+        operation: submit
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: body
+            dependencyName: sqs-dep
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: goodbye-
+            spec:
+              workflowTemplateRef:
+                name: goodbye-wf-template
+      name: webhook-workflow-trigger
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
