@@ -1,0 +1,81 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: goodbye-wf-template
+spec:
+  templates: []
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: hello-wf-template
+spec:
+  arguments:
+    parameters:
+    - name: cm-name
+      value: default-cm
+    - name: input-payload
+      value: '[]'
+  entrypoint: hello-wf
+  templates:
+  - arguments:
+      parameters:
+      - name: bucket
+        valueFrom:
+          configMapKeyRef:
+            key: bucket
+            name: '{{workflow.inputs.parameters.cm-name}}'
+      - name: roleARN
+        valueFrom:
+          configMapKeyRef:
+            key: roleARN
+            name: '{{workflow.inputs.parameters.cm-name}}'
+      - name: greeting
+        value: hello
+      - name: names
+        value: '{{item}}'
+    name: hello-wf
+    template: greet
+    withParam: '{{workflow.inputs.parameters.input-payload}}'
+  - container:
+      args: |-
+        {{=
+
+          toJson(
+            ["--greeting", "{{inputs.parameters.greeting}}"] +
+            map(sprig.splitList(inputs.parameters.names), {"--name" + #}) +
+            ["--output-file", "/tmp/out.txt"]
+          )
+        }}
+      command:
+      - python
+      - greet.py
+      image: greetings:latest
+    inputs:
+      parameters:
+      - name: bucket-name
+      - name: roleARN
+      - default: ""
+        name: key-prefix
+      - default: default
+        name: greeting
+      - default: Alice,Bob
+        name: names
+    name: greet
+    outputs:
+      artifacts:
+      - archive:
+          none: {}
+        name: output-file
+        path: /tmp/out.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: |-
+            {{inputs.parameters.key-prefix}}/
+
+              {{workflow.creationTimestamp.Y}}-
+              {{workflow.creationTimestamp.m}}-
+              {{workflow.creationTimestamp.d}}/
+            {{workflow.name}}/ {{pod.name}}.txt
+          roleARN: '{{inputs.parameters.roleARN}}'
