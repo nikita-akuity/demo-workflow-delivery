@@ -36,6 +36,16 @@ metadata:
 type: Opaque
 ---
 apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+spec:
+  nats:
+    native:
+      auth: token
+      replicas: 3
+---
+apiVersion: argoproj.io/v1alpha1
 kind: EventSource
 metadata:
   name: webhook
