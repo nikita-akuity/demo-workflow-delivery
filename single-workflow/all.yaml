@@ -69,8 +69,6 @@ spec:
   - eventName: greet-and-count
     eventSourceName: webhook
     name: wh-dep
-  template:
-    serviceAccountName: operate-workflow-sa
   triggers:
   - template:
       argoWorkflow:
