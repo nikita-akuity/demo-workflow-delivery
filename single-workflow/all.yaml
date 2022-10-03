@@ -1,6 +1,7 @@
 apiVersion: v1
 data:
   bucket: default
+  bucket-key: single-wf
   db-connection-secret: db-connection-example
   roleARN: default
   table-name: default
