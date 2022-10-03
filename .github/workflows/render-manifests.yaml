@@ -26,8 +26,8 @@ jobs:
             git checkout --orphan env/${{ matrix.env }}
             git rm -rf .
           fi 
-            mkdir -p ${{ matrix.folder }}
-            cp /tmp/all.yaml ${{ matrix.folder }}/
+          mkdir -p ${{ matrix.folder }}
+          cp /tmp/all.yaml ${{ matrix.folder }}/
       - name: Deploy to ${{ matrix.env }}
         if: ${{ matrix.env == 'dev' }}
         run: |
