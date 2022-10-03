@@ -40,7 +40,8 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         if: ${{ matrix.env != 'dev' }}
         with:
-          title: ${{ github.event.head_commit.message }}
+          title: Deploy to ${{ matrix.env }}
+          body: ${{ github.event.head_commit.message }}
           commit-message: ${{ github.event.head_commit.message }}
           base: env/${{ matrix.env }}
           branch: deploy-pr/${{ matrix.folder }}/env/${{ matrix.env }}
