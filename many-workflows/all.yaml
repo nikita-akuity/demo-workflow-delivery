@@ -1,13 +1,231 @@
+apiVersion: v1
+data:
+  bucket: default
+  bucket-key: single-wf
+  db-connection-secret: db-connection-example
+  roleARN: default
+  table-name: default
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: default-cm
+---
+apiVersion: v1
+data:
+  DB_HOST: ZGIuaG9zdG5hbQ==
+  DB_NAME: ZGF0YWJhc2VfbmFtZQ==
+  DB_PASSWORD: c2VjcmV0UGFzc1cwcmQ=
+  DB_PORT: MzYwMA==
+  DB_USER: ZGF0YWJhc2VfdXNlcg==
+kind: Secret
+metadata:
+  name: db-connection-example
+type: Opaque
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+spec:
+  nats:
+    native:
+      auth: token
+      replicas: 3
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: s3-new-files-sqs
+spec:
+  sqs:
+    s3-new-files:
+      jsonBody: true
+      queue: my-fake-queue-2
+      region: us-east-1
+      waitTimeSeconds: 20
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: aws-sqs
+spec:
+  dependencies:
+  - eventName: example
+    eventSourceName: s3-new-files-sqs
+    name: sqs-dep
+  triggers:
+  - template:
+      argoWorkflow:
+        operation: submit
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: body
+            dependencyName: sqs-dep
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: goodbye-
+            spec:
+              workflowTemplateRef:
+                name: goodbye-wf-template
+      name: webhook-workflow-trigger
+---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   name: goodbye-wf-template
 spec:
-  templates: []
+  arguments:
+    parameters:
+    - name: cm-name
+      value: default-cm
+    - name: file
+      value: ""
+  entrypoint: goodbye-wf
+  templates:
+  - arguments:
+      parameters:
+      - name: bucket
+        valueFrom:
+          configMapKeyRef:
+            key: bucket
+            name: '{{workflow.inputs.parameters.cm-name}}'
+      - name: roleARN
+        valueFrom:
+          configMapKeyRef:
+            key: roleARN
+            name: '{{workflow.inputs.parameters.cm-name}}'
+      - name: key
+        value: '{{workflow.inputs.parameters.input-payload}}'
+      - name: search
+        value: hello
+      - name: replace
+        value: goodbye
+    name: goodbye-wf
+    template: replace-text
+  - container:
+      args:
+      - --input-file
+      - /tmp/in.txt
+      - --output-file
+      - /tmp/out.txt
+      - --search
+      - '{{inputs.parameters.search}}'
+      - --replace
+      - '{{inputs.parameters.replace}}'
+      command:
+      - python
+      - rt.py
+      image: ghcr.io/nikita-akuity/replace-text:0.0.1
+    inputs:
+      artifacts:
+      - name: input-file
+        path: /tmp/in.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: '{{inputs.parameters.key}}'
+          roleARN: '{{inputs.parameters.roleARN}}'
+      parameters:
+      - name: bucket-name
+      - name: roleARN
+      - name: key
+      - default: ""
+        name: key-prefix
+      - default: default
+        name: search
+      - default: default
+        name: replace
+    name: replace-text
+    outputs:
+      artifacts:
+      - name: output-file
+        path: /tmp/out.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: |-
+            {{inputs.parameters.key-prefix}}/
+
+              {{workflow.creationTimestamp.Y}}-
+              {{workflow.creationTimestamp.m}}-
+              {{workflow.creationTimestamp.d}}/
+            {{workflow.name}}/ {{pod.name}}.txt
+          roleARN: '{{inputs.parameters.roleARN}}'
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   name: hello-wf-template
 spec:
-  templates: []
+  arguments:
+    parameters:
+    - name: cm-name
+      value: default-cm
+    - name: input-payload
+      value: '[]'
+  entrypoint: hello-wf
+  templates:
+  - arguments:
+      parameters:
+      - name: bucket
+        valueFrom:
+          configMapKeyRef:
+            key: bucket
+            name: '{{workflow.inputs.parameters.cm-name}}'
+      - name: roleARN
+        valueFrom:
+          configMapKeyRef:
+            key: roleARN
+            name: '{{workflow.inputs.parameters.cm-name}}'
+      - name: greeting
+        value: hello
+      - name: names
+        value: '{{item}}'
+    name: hello-wf
+    template: greet
+    withParam: '{{workflow.inputs.parameters.input-payload}}'
+  - container:
+      args:
+      - --names
+      - '{{inputs.parameters.names}}'
+      - --greeting
+      - '{{inputs.parameters.greeting}}'
+      - --output-file
+      - /tmp/out.txt
+      command:
+      - python
+      - greet.py
+      image: ghcr.io/nikita-akuity/greetings:0.0.1
+    inputs:
+      parameters:
+      - name: bucket-name
+      - name: roleARN
+      - default: ""
+        name: key-prefix
+      - default: default
+        name: greeting
+      - default: Alice,Bob
+        name: names
+    name: greet
+    outputs:
+      artifacts:
+      - archive:
+          none: {}
+        name: output-file
+        path: /tmp/out.txt
+        s3:
+          bucket: '{{inputs.parameters.bucket-name}}'
+          endpoint: s3.amazonaws.com
+          key: |-
+            {{inputs.parameters.key-prefix}}/
+
+              {{workflow.creationTimestamp.Y}}-
+              {{workflow.creationTimestamp.m}}-
+              {{workflow.creationTimestamp.d}}/
+            {{workflow.name}}/ {{pod.name}}.txt
+          roleARN: '{{inputs.parameters.roleARN}}'
