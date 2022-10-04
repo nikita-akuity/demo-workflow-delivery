@@ -190,15 +190,13 @@ spec:
     template: greet
     withParam: '{{workflow.inputs.parameters.input-payload}}'
   - container:
-      args: |-
-        {{=
-
-          toJson(
-            ["--greeting", "{{inputs.parameters.greeting}}"] +
-            map(sprig.splitList(inputs.parameters.names), {"--name" + #}) +
-            ["--output-file", "/tmp/out.txt"]
-          )
-        }}
+      args:
+      - --names
+      - '{{inputs.parameters.names}}'
+      - --greeting
+      - '{{inputs.parameters.greeting}}'
+      - --output-file
+      - /tmp/out.txt
       command:
       - python
       - greet.py
