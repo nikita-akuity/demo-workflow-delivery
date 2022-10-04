@@ -1,6 +1,7 @@
 apiVersion: v1
 data:
   bucket: default
+  bucket-key: single-wf
   db-connection-secret: db-connection-example
   roleARN: default
   table-name: default
@@ -21,6 +22,16 @@ kind: Secret
 metadata:
   name: db-connection-example
 type: Opaque
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+spec:
+  nats:
+    native:
+      auth: token
+      replicas: 3
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
@@ -46,8 +57,6 @@ spec:
   - eventName: greet-and-count
     eventSourceName: webhook
     name: wh-dep
-  template:
-    serviceAccountName: operate-workflow-sa
   triggers:
   - template:
       argoWorkflow:
@@ -75,19 +84,17 @@ metadata:
 spec:
   templates:
   - container:
-      args: |-
-        {{=
-
-          toJson(
-            ["--greeting", "{{inputs.parameters.greeting}}"] +
-            map(sprig.splitList(inputs.parameters.names), {"--name" + #}) +
-            ["--output-file", "/tmp/out.txt"]
-          )
-        }}
+      args:
+      - --names
+      - '{{inputs.parameters.names}}'
+      - --greeting
+      - '{{inputs.parameters.greeting}}'
+      - --output-file
+      - /tmp/out.txt
       command:
       - python
       - greet.py
-      image: ghcr.io/nikita-akuity/greetings:0.0.1-rc.1
+      image: ghcr.io/nikita-akuity/greetings:0.0.1
     inputs:
       parameters:
       - name: bucket-name
@@ -138,7 +145,7 @@ spec:
       command:
       - python
       - rt.py
-      image: ghcr.io/nikita-akuity/replace-text:0.0.1-rc.1
+      image: ghcr.io/nikita-akuity/replace-text:0.0.1
     inputs:
       artifacts:
       - name: input-file
@@ -194,7 +201,7 @@ spec:
       command:
       - python
       - count.py
-      image: ghcr.io/nikita-akuity/count:0.0.1-rc.1
+      image: ghcr.io/nikita-akuity/count:0.0.1
     inputs:
       artifacts:
       - name: input-file
