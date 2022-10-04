@@ -54,8 +54,6 @@ spec:
   - eventName: example
     eventSourceName: s3-new-files-sqs
     name: sqs-dep
-  template:
-    serviceAccountName: operate-workflow-sa
   triggers:
   - template:
       argoWorkflow:
