@@ -25,10 +25,10 @@ patchesStrategicMerge:
 images:
 - name: count
   newName: ghcr.io/nikita-akuity/count
-  newTag: sha-5a0f611
+  newTag: sha-1882e20
 - name: greetings
   newName: ghcr.io/nikita-akuity/greetings
-  newTag: sha-5a0f611
+  newTag: sha-1882e20
 - name: replace-text
   newName: ghcr.io/nikita-akuity/replace-text
-  newTag: sha-5a0f611
+  newTag: sha-1882e20
