@@ -3,6 +3,8 @@ kind: Kustomization
 
 resources:
 - ../../base
+- sa.yaml
+- db-connection.yaml
 
 configMapGenerator:
 - literals:
