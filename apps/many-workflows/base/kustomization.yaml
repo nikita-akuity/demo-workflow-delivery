@@ -1,5 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - https://github.com/nikita-akuity/demo-workflow//manifests/many-workflows/?ref=f843047bb02c5d61e91b022d32a59b372450ed0c
+  - https://github.com/nikita-akuity/demo-workflow//manifests/many-workflows/?ref=ce033702425102ace564c8b2b9ab4a3ffbe98df4
   - eventbus.yaml
