@@ -37,6 +37,12 @@ data:
       bucket: example-bucket-name
       region: us-west-1
       useSDKCreds: true
+      keyFormat: >-
+        prefix/
+          {{workflow.creationTimestamp.Y}}-
+          {{workflow.creationTimestamp.m}}-
+          {{workflow.creationTimestamp.d}}/
+        {{workflow.name}}
 kind: ConfigMap
 metadata:
   annotations:
@@ -46,7 +52,6 @@ metadata:
 apiVersion: v1
 data:
   db-connection-secret: example-db-connect
-  key-prefix: my-workflow
   table-name: results
 kind: ConfigMap
 metadata:
@@ -149,27 +154,13 @@ spec:
     name: greet
     outputs:
       artifacts:
-      - archive:
-          none: {}
-        name: output-file
+      - name: output-file
         path: /tmp/out.txt
         s3:
-          key: |-
-            {{inputs.parameters.key-prefix}}/
-
-              {{workflow.creationTimestamp.Y}}-
-              {{workflow.creationTimestamp.m}}-
-              {{workflow.creationTimestamp.d}}/
-            {{workflow.name}}/ {{pod.name}}.txt
+          key: '{{pod.name}}.txt'
       parameters:
       - name: key
-        value: |-
-          {{inputs.parameters.key-prefix}}/
-
-            {{workflow.creationTimestamp.Y}}-
-            {{workflow.creationTimestamp.m}}-
-            {{workflow.creationTimestamp.d}}/
-          {{workflow.name}}/ {{pod.name}}.txt
+        value: '{{pod.name}}.txt'
   - container:
       args:
       - --input-file
@@ -204,22 +195,10 @@ spec:
       - name: output-file
         path: /tmp/out.txt
         s3:
-          key: |-
-            {{inputs.parameters.key-prefix}}/
-
-              {{workflow.creationTimestamp.Y}}-
-              {{workflow.creationTimestamp.m}}-
-              {{workflow.creationTimestamp.d}}/
-            {{workflow.name}}/ {{pod.name}}.txt
+          key: '{{pod.name}}.txt'
       parameters:
       - name: key
-        value: |-
-          {{inputs.parameters.key-prefix}}/
-
-            {{workflow.creationTimestamp.Y}}-
-            {{workflow.creationTimestamp.m}}-
-            {{workflow.creationTimestamp.d}}/
-          {{workflow.name}}/ {{pod.name}}.txt
+        value: ' {{pod.name}}.txt'
   - container:
       args:
       - --input-file
@@ -237,7 +216,7 @@ spec:
       - name: input-file
         path: /tmp/in.txt
         s3:
-          key: '{{inputs.parameters.key}}'
+          key: '{{inputs.parameters.input-key}}'
       parameters:
       - name: input-key
       - default: default
@@ -329,11 +308,6 @@ spec:
       tasks:
       - arguments:
           parameters:
-          - name: key-prefix
-            valueFrom:
-              configMapKeyRef:
-                key: key-prefix
-                name: '{{workflow.parameters.cm-name}}'
           - name: greeting
             value: hello
           - name: names
@@ -345,11 +319,6 @@ spec:
         withParam: '{{workflow.parameters.input-payload}}'
       - arguments:
           parameters:
-          - name: key-prefix
-            valueFrom:
-              configMapKeyRef:
-                key: key-prefix
-                name: '{{workflow.parameters.cm-name}}'
           - name: search
             value: hello
           - name: replace
