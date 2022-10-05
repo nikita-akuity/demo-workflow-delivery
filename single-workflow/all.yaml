@@ -1,4 +1,11 @@
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::541216676946:role/arkose-demo-single-wf-dev
+  name: arkose-demo
+---
+apiVersion: v1
 data:
   bucket: default
   bucket-key: single-wf
@@ -456,3 +463,50 @@ spec:
           name: script-templates
           template: write-to-db
     name: single-wf
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-connection-dev
+spec:
+  data:
+  - remoteRef:
+      key: /arkose-demo/db/single-wf-dev
+      property: host
+    secretKey: DB_HOST
+  - remoteRef:
+      key: /arkose-demo/db/single-wf-dev
+      property: port
+    secretKey: DB_PORT
+  - remoteRef:
+      key: /arkose-demo/db/single-wf-dev
+      property: database
+    secretKey: DB_NAME
+  - remoteRef:
+      key: /arkose-demo/db/single-wf-dev
+      property: user
+    secretKey: DB_USER
+  - remoteRef:
+      key: /arkose-demo/db/single-wf-dev
+      property: password
+    secretKey: DB_PASSWORD
+  refreshInterval: 10m
+  secretStoreRef:
+    kind: SecretStore
+    name: demo-db-connect
+  target:
+    name: db-connection-dev
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: demo-db-connect
+spec:
+  provider:
+    aws:
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: arkose-demo
+      region: us-west-1
+      service: SecretsManager
