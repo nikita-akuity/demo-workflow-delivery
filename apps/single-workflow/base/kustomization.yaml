@@ -1,12 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - https://github.com/nikita-akuity/demo-workflow//manifests/single-workflow/?ref=d812402e03b9dbfc7e6658878398bc17ec2c74e6
+  - https://github.com/nikita-akuity/demo-workflow//manifests/single-workflow/?ref=931601c7bd6712db496d3e76fc9338005dcf6949
   - eventbus.yaml
   - rbac
-
 openapi:
   path: https://raw.githubusercontent.com/argoproj/argo-schema-generator/main/schema/argo_events_kustomize_schema.json
-
 patchesStrategicMerge:
-- rbac-patch.yaml
+  - rbac-patch.yaml
