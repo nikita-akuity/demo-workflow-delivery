@@ -384,7 +384,7 @@ spec:
               configMapKeyRef:
                 key: table-name
                 name: '{{workflow.parameters.cm-name}}'
-          - name: db-connection-secret}
+          - name: db-connection-secret
             valueFrom:
               configMapKeyRef:
                 key: db-connection-secret
