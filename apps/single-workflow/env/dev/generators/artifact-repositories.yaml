@@ -8,4 +8,4 @@ options:
   annotations:
     workflows.argoproj.io/default-artifact-repository: demo-s3
 files:
-  - demo-s3=artfact-repos/demo-s3.yaml
+  - demo-s3=artifact-repositories/demo-s3.yaml

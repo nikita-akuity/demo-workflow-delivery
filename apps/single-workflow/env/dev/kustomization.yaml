@@ -8,7 +8,7 @@ resources:
 
 generators:
 - generators/parameters.yaml
-- generators/artifacts-repositories.yaml
+- generators/artifact-repositories.yaml
 
 openapi:
   path: https://raw.githubusercontent.com/argoproj/argo-schema-generator/main/schema/argo_workflows_kustomize_schema.json
