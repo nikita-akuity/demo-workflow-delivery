@@ -1,26 +1,44 @@
 apiVersion: v1
 data:
-  bucket: default
-  bucket-key: single-wf
-  db-connection-secret: db-connection-example
-  roleARN: default
-  table-name: default
+  example-goodbye-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: example-bucket-name
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "prefix/goodbyes\
+        /{{pod.name}}"
+  example-hello-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: example-bucket-name
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "prefix/hellos\
+        /{{pod.name}}"
+kind: ConfigMap
+metadata:
+  name: example-artifact-repositories
+---
+apiVersion: v1
+data:
+  table-name: results
 kind: ConfigMap
 metadata:
   labels:
     workflows.argoproj.io/configmap-type: Parameter
-  name: default-cm
+  name: example-parameters
 ---
 apiVersion: v1
 data:
-  DB_HOST: ZGIuaG9zdG5hbQ==
+  DB_HOST: ZGIuaG9zdG5hbWU=
   DB_NAME: ZGF0YWJhc2VfbmFtZQ==
   DB_PASSWORD: c2VjcmV0UGFzc1cwcmQ=
   DB_PORT: MzYwMA==
   DB_USER: ZGF0YWJhc2VfdXNlcg==
 kind: Secret
 metadata:
-  name: db-connection-example
+  name: example-db-connect
 type: Opaque
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -44,6 +62,21 @@ spec:
       queue: my-fake-queue-2
       region: us-east-1
       waitTimeSeconds: 20
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: webhook
+spec:
+  service:
+    ports:
+    - port: 12000
+      targetPort: 12000
+  webhook:
+    greet:
+      endpoint: /greet
+      method: POST
+      port: "12000"
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Sensor
@@ -75,6 +108,39 @@ spec:
       name: webhook-workflow-trigger
 ---
 apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  dependencies:
+  - eventName: greet
+    eventSourceName: webhook
+    name: wh-dep
+  triggers:
+  - template:
+      argoWorkflow:
+        operation: submit
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: body.names
+            dependencyName: wh-dep
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: greet-
+            spec:
+              arguments:
+                parameters:
+                - name: names
+                  value: to,be,replaced
+              workflowTemplateRef:
+                name: hello-wf-template
+      name: webhook-workflow-trigger
+---
+apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   name: goodbye-wf-template
@@ -85,21 +151,14 @@ spec:
       value: default-cm
     - name: file
       value: ""
+  artifactRepositoryRef:
+    configMap: example-artifact-repositories
+    key: example-goodbye-s3
   entrypoint: goodbye-wf
   templates:
   - arguments:
       parameters:
-      - name: bucket
-        valueFrom:
-          configMapKeyRef:
-            key: bucket
-            name: '{{workflow.parameters.cm-name}}'
-      - name: roleARN
-        valueFrom:
-          configMapKeyRef:
-            key: roleARN
-            name: '{{workflow.parameters.cm-name}}'
-      - name: key
+      - name: file
         value: '{{workflow.parameters.input-payload}}'
       - name: search
         value: hello
@@ -107,7 +166,18 @@ spec:
         value: goodbye
     name: goodbye-wf
     template: replace-text
-  - container:
+  - arguments:
+      artifacts:
+      - name: input-file
+        path: /tmp/in.txt
+        s3:
+          key: '{{workflow.parameters.file}}'
+      parameters:
+      - name: search
+        value: hello
+      - name: replace
+        value: goodbye
+    container:
       args:
       - --input-file
       - /tmp/in.txt
@@ -121,41 +191,11 @@ spec:
       - python
       - rt.py
       image: ghcr.io/nikita-akuity/replace-text:sha-1882e20
-    inputs:
-      artifacts:
-      - name: input-file
-        path: /tmp/in.txt
-        s3:
-          bucket: '{{inputs.parameters.bucket-name}}'
-          endpoint: s3.amazonaws.com
-          key: '{{inputs.parameters.key}}'
-          roleARN: '{{inputs.parameters.roleARN}}'
-      parameters:
-      - name: bucket-name
-      - name: roleARN
-      - name: key
-      - default: ""
-        name: key-prefix
-      - default: default
-        name: search
-      - default: default
-        name: replace
     name: replace-text
     outputs:
       artifacts:
       - name: output-file
         path: /tmp/out.txt
-        s3:
-          bucket: '{{inputs.parameters.bucket-name}}'
-          endpoint: s3.amazonaws.com
-          key: |-
-            {{inputs.parameters.key-prefix}}/
-
-              {{workflow.creationTimestamp.Y}}-
-              {{workflow.creationTimestamp.m}}-
-              {{workflow.creationTimestamp.d}}/
-            {{workflow.name}}/ {{pod.name}}.txt
-          roleARN: '{{inputs.parameters.roleARN}}'
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
@@ -164,32 +204,20 @@ metadata:
 spec:
   arguments:
     parameters:
-    - name: cm-name
-      value: default-cm
-    - name: input-payload
-      value: '[]'
+    - name: names
+      value: ""
+  artifactRepositoryRef:
+    configMap: example-artifact-repositories
+    key: example-hello-s3
   entrypoint: hello-wf
   templates:
   - arguments:
       parameters:
-      - name: bucket
-        valueFrom:
-          configMapKeyRef:
-            key: bucket
-            name: '{{workflow.parameters.cm-name}}'
-      - name: roleARN
-        valueFrom:
-          configMapKeyRef:
-            key: roleARN
-            name: '{{workflow.parameters.cm-name}}'
       - name: greeting
         value: hello
-      - name: names
-        value: '{{item}}'
-    name: hello-wf
-    template: greet
-    withParam: '{{workflow.parameters.input-payload}}'
-  - container:
+      - default: '{{workflow.parameters.names}}'
+        name: names
+    container:
       args:
       - --names
       - '{{inputs.parameters.names}}'
@@ -201,16 +229,6 @@ spec:
       - python
       - greet.py
       image: ghcr.io/nikita-akuity/greetings:sha-1882e20
-    inputs:
-      parameters:
-      - name: bucket-name
-      - name: roleARN
-      - default: ""
-        name: key-prefix
-      - default: default
-        name: greeting
-      - default: Alice,Bob
-        name: names
     name: greet
     outputs:
       artifacts:
@@ -218,14 +236,3 @@ spec:
           none: {}
         name: output-file
         path: /tmp/out.txt
-        s3:
-          bucket: '{{inputs.parameters.bucket-name}}'
-          endpoint: s3.amazonaws.com
-          key: |-
-            {{inputs.parameters.key-prefix}}/
-
-              {{workflow.creationTimestamp.Y}}-
-              {{workflow.creationTimestamp.m}}-
-              {{workflow.creationTimestamp.d}}/
-            {{workflow.name}}/ {{pod.name}}.txt
-          roleARN: '{{inputs.parameters.roleARN}}'
