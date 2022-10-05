@@ -93,14 +93,14 @@ spec:
         valueFrom:
           configMapKeyRef:
             key: bucket
-            name: '{{workflow.inputs.parameters.cm-name}}'
+            name: '{{workflow.parameters.cm-name}}'
       - name: roleARN
         valueFrom:
           configMapKeyRef:
             key: roleARN
-            name: '{{workflow.inputs.parameters.cm-name}}'
+            name: '{{workflow.parameters.cm-name}}'
       - name: key
-        value: '{{workflow.inputs.parameters.input-payload}}'
+        value: '{{workflow.parameters.input-payload}}'
       - name: search
         value: hello
       - name: replace
@@ -176,19 +176,19 @@ spec:
         valueFrom:
           configMapKeyRef:
             key: bucket
-            name: '{{workflow.inputs.parameters.cm-name}}'
+            name: '{{workflow.parameters.cm-name}}'
       - name: roleARN
         valueFrom:
           configMapKeyRef:
             key: roleARN
-            name: '{{workflow.inputs.parameters.cm-name}}'
+            name: '{{workflow.parameters.cm-name}}'
       - name: greeting
         value: hello
       - name: names
         value: '{{item}}'
     name: hello-wf
     template: greet
-    withParam: '{{workflow.inputs.parameters.input-payload}}'
+    withParam: '{{workflow.parameters.input-payload}}'
   - container:
       args:
       - --names
