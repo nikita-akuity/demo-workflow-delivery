@@ -471,23 +471,23 @@ metadata:
 spec:
   data:
   - remoteRef:
-      key: /arkose-demo/db/single-wf-dev
+      key: arkose-demo/db/single-wf-dev
       property: host
     secretKey: DB_HOST
   - remoteRef:
-      key: /arkose-demo/db/single-wf-dev
+      key: arkose-demo/db/single-wf-dev
       property: port
     secretKey: DB_PORT
   - remoteRef:
-      key: /arkose-demo/db/single-wf-dev
+      key: arkose-demo/db/single-wf-dev
       property: database
     secretKey: DB_NAME
   - remoteRef:
-      key: /arkose-demo/db/single-wf-dev
+      key: arkose-demo/db/single-wf-dev
       property: user
     secretKey: DB_USER
   - remoteRef:
-      key: /arkose-demo/db/single-wf-dev
+      key: arkose-demo/db/single-wf-dev
       property: password
     secretKey: DB_PASSWORD
   refreshInterval: 10m
