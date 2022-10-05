@@ -12,6 +12,12 @@ data:
       bucket: akuity-arkose-demo
       region: us-west-1
       useSDKCreds: true
+      keyFormat: >-
+        dev/
+          {{workflow.creationTimestamp.Y}}-
+          {{workflow.creationTimestamp.m}}-
+          {{workflow.creationTimestamp.d}}/
+        {{workflow.name}}
 kind: ConfigMap
 metadata:
   annotations:
@@ -20,9 +26,7 @@ metadata:
 ---
 apiVersion: v1
 data:
-  bucket: akuity-arkose-demo
   db-connection-secret: db-connection-dev
-  key-prefix: dev-artifacts
   table-name: dev_statistics
 kind: ConfigMap
 metadata:
