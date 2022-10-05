@@ -4,3 +4,15 @@ metadata:
   name: arkose-demo
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::541216676946:role/arkose-demo-single-wf-dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: executor-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: executor
+subjects:
+  - kind: ServiceAccount
+    name: arkose-demo

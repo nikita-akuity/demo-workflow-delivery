@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - https://github.com/nikita-akuity/demo-workflow//manifests/single-workflow/?ref=af88db7653b64fb96d7b65571f16ceca8165a093
   - eventbus.yaml
+  - executor-role.yaml
