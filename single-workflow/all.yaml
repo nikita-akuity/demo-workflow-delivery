@@ -34,6 +34,7 @@ apiVersion: v1
 data:
   demo-s3: |
     s3:
+      endpoint: s3.amazonaws.com
       bucket: akuity-arkose-demo
       region: us-west-1
       useSDKCreds: true
@@ -62,6 +63,7 @@ apiVersion: v1
 data:
   example-s3: |
     s3:
+      endpoint: s3.amazonaws.com
       bucket: example-bucket-name
       region: us-west-1
       useSDKCreds: true
