@@ -1,0 +1,12 @@
+apiVersion: builtin
+kind: ConfigMapGenerator
+behavior: create
+metadata:
+  name: dev-artifact-repositories
+options:
+  disableNameSuffixHash: true
+  annotations:
+    workflows.argoproj.io/default-artifact-repository: demo-s3
+files:
+  - hello-s3=artifact-repositories/dev-hello-s3.yaml
+  - goodbye-s3=artifact-repositories/dev-goodbye-s3.yaml

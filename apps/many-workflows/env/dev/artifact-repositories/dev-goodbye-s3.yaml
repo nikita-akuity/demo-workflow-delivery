@@ -1,0 +1,6 @@
+s3:
+  endpoint: s3.amazonaws.com
+  bucket: akuity-arkose-demo
+  region: us-west-1
+  useSDKCreds: true
+  keyFormat: "dev/many-wf/goodbyes/{{pod.name}}"

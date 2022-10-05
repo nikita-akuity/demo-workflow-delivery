@@ -3,3 +3,7 @@ kind: Kustomization
 resources:
   - https://github.com/nikita-akuity/demo-workflow//manifests/many-workflows/?ref=b29a3c6b7cde0809ea68f0b935287b12e8733aef
   - eventbus.yaml
+  - rbac
+
+patchesStrategicMerge:
+- rbac-patch.yaml
