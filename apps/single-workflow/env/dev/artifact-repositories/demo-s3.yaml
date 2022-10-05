@@ -3,9 +3,9 @@ s3:
   bucket: akuity-arkose-demo
   region: us-west-1
   useSDKCreds: true
-  keyFormat: >-
-    dev/
-      {{workflow.creationTimestamp.Y}}-
-      {{workflow.creationTimestamp.m}}-
-      {{workflow.creationTimestamp.d}}/
-    {{workflow.name}}/{{pod.name}}
+  keyFormat: "dev\
+    /{{workflow.creationTimestamp.Y}}-\
+    {{workflow.creationTimestamp.m}}-\
+    {{workflow.creationTimestamp.d}}\
+    /{{workflow.name}}\
+    /{{pod.name}}"
