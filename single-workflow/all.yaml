@@ -72,7 +72,7 @@ data:
           {{workflow.creationTimestamp.Y}}-
           {{workflow.creationTimestamp.m}}-
           {{workflow.creationTimestamp.d}}/
-        {{workflow.name}}
+        {{workflow.name}}/{{pod.name}}
 kind: ConfigMap
 metadata:
   annotations:
@@ -185,11 +185,6 @@ spec:
       artifacts:
       - name: output-file
         path: /tmp/out.txt
-        s3:
-          key: '{{pod.name}}.txt'
-      parameters:
-      - name: key
-        value: '{{pod.name}}.txt'
   - container:
       args:
       - --input-file
@@ -208,8 +203,6 @@ spec:
       artifacts:
       - name: input-file
         path: /tmp/in.txt
-        s3:
-          key: '{{inputs.parameters.input-key}}'
       parameters:
       - name: input-key
       - default: ""
@@ -244,10 +237,7 @@ spec:
       artifacts:
       - name: input-file
         path: /tmp/in.txt
-        s3:
-          key: '{{inputs.parameters.input-key}}'
       parameters:
-      - name: input-key
       - default: default
         name: string
     name: count
@@ -338,62 +328,19 @@ spec:
   entrypoint: single-wf
   serviceAccountName: arkose-demo
   templates:
-  - dag:
-      tasks:
-      - arguments:
+  - name: single-wf
+    steps:
+    - - arguments:
           parameters:
-          - name: greeting
-            value: hello
           - name: names
             value: '{{item}}'
-        name: greetings
-        templateRef:
-          name: container-templates
-          template: greet
+        name: process-item
+        template: branch
         withParam: '{{workflow.parameters.input-payload}}'
-      - arguments:
-          parameters:
-          - name: search
-            value: hello
-          - name: replace
-            value: goodbye
-          - name: input-key
-            value: '{{item}}'
-        depends: greetings
-        name: goodbyes
-        templateRef:
-          name: container-templates
-          template: replace-text
-        withParam: '{{tasks.greetings.outputs.parameters.key}}'
-      - arguments:
-          parameters:
-          - name: string
-            value: hello
-          - name: input-key
-            value: '{{item}}'
-        depends: greetings
-        name: count-hellos
-        templateRef:
-          name: container-templates
-          template: count
-        withParam: '{{tasks.greetings.outputs.parameters.key}}'
-      - arguments:
-          parameters:
-          - name: string
-            value: goodbye
-          - name: input-key
-            value: '{{item}}'
-        depends: goodbyes
-        name: count-goodbyes
-        templateRef:
-          name: container-templates
-          template: count
-        withParam: '{{tasks.goodbyes.outputs.parameters.key}}'
-      - arguments:
+    - - arguments:
           parameters:
           - name: numbers
-            value: '{{tasks.count-hellos.outputs.parameters.number}}'
-        depends: count-hellos
+            value: '{{steps.process-item.outputs.parameters.count-hellos}}'
         name: sum-hellos
         templateRef:
           name: script-templates
@@ -401,28 +348,83 @@ spec:
       - arguments:
           parameters:
           - name: numbers
-            value: '{{tasks.count-goodbyes.outputs.parameters.number}}'
-        depends: count-goodbyes
+            value: '{{steps.process-item.outputs.parameters.count-goodbyes}}'
         name: sum-goodbyes
         templateRef:
           name: script-templates
           template: sum
-      - arguments:
+    - - arguments:
           parameters:
           - name: table-name
             value: '{{workflow.parameters.mysql-table-name}}'
           - name: db-connection-secret
             value: '{{workflow.parameters.mysql-connection-secret}}'
           - name: sum-hello
-            value: '{{tasks.sum-hellos.outputs.result}}'
+            value: '{{steps.sum-hellos.outputs.result}}'
           - name: sum-goodbye
-            value: '{{tasks.sum-goodbyes.outputs.result}}'
-        depends: sum-hellos && sum-goodbyes
+            value: '{{steps.sum-goodbyes.outputs.result}}'
         name: write-result
         templateRef:
           name: script-templates
           template: write-to-db
-    name: single-wf
+  - inputs:
+      parameters:
+      - name: names
+    name: branch
+    outputs:
+      parameters:
+      - name: count-hellos
+        value: '{{steps.count-hellos.outputs.result}}'
+      - name: count-goodbyes
+        value: '{{steps.count-goodbyes.outputs.result}}'
+    steps:
+    - - arguments:
+          parameters:
+          - name: greeting
+            value: hello
+          - name: names
+            value: '{{inputs.parameters.names}}'
+        name: hellos
+        templateRef:
+          name: container-templates
+          template: greet
+    - - arguments:
+          artifacts:
+          - from: '{{steps.hellos.outputs.artifacts.output-file}}'
+            name: input-file
+          parameters:
+          - name: search
+            value: hello
+          - name: replace
+            value: goodbye
+          - name: input-key
+            value: '{{item}}'
+        name: goodbyes
+        templateRef:
+          name: container-templates
+          template: replace-text
+    - - arguments:
+          artifacts:
+          - from: '{{steps.hellos.outputs.artifacts.output-file}}'
+            name: input-file
+          parameters:
+          - name: string
+            value: hello
+        name: count-hellos
+        templateRef:
+          name: container-templates
+          template: count
+      - arguments:
+          artifacts:
+          - from: '{{steps.goodbyes.outputs.artifacts.output-file}}'
+            name: input-file
+          parameters:
+          - name: string
+            value: goodbye
+        name: count-goodbyes
+        templateRef:
+          name: container-templates
+          template: count
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
