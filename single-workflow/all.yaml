@@ -26,7 +26,6 @@ metadata:
 ---
 apiVersion: v1
 data:
-  db-connection-secret: db-connection-dev
   table-name: dev_statistics
 kind: ConfigMap
 metadata:
@@ -298,8 +297,15 @@ metadata:
 spec:
   arguments:
     parameters:
+    - name: mysql-connection-secret
+      value: db-connection-dev
     - name: cm-name
       value: dev-parameters
+    - name: mysql-table-name
+      valueFrom:
+        configMapKeyRef:
+          key: table-name
+          name: dev-parameters
     - name: input-payload
       value: '[]'
   artifactRepositoryRef:
