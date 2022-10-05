@@ -50,11 +50,10 @@ kind: ConfigMap
 metadata:
   annotations:
     workflows.argoproj.io/default-artifact-repository: example-s3
-  name: example-artifacts
+  name: example-artifact-repositories
 ---
 apiVersion: v1
 data:
-  db-connection-secret: example-db-connect
   table-name: results
 kind: ConfigMap
 metadata:
@@ -386,15 +385,9 @@ spec:
       - arguments:
           parameters:
           - name: table-name
-            valueFrom:
-              configMapKeyRef:
-                key: table-name
-                name: '{{workflow.parameters.cm-name}}'
+            value: '{{workflow.parameters.mysql-table-name}}'
           - name: db-connection-secret
-            valueFrom:
-              configMapKeyRef:
-                key: db-connection-secret
-                name: '{{workflow.parameters.cm-name}}'
+            value: '{{workflow.parameters.mysql-connection-secret}}'
           - name: sum-hello
             value: '{{tasks.sum-hellos.outputs.result}}'
           - name: sum-goodbye
