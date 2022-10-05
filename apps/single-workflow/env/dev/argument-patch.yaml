@@ -5,7 +5,7 @@ metadata:
 spec:
   serviceAccountName: arkose-demo
   artifactRepositoryRef:
-    configMap: dev-artifacts
+    configMap: dev-artifact-repositories
     key: demo-s3
   arguments:
     parameters:
