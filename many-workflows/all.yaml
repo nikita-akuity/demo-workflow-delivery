@@ -77,7 +77,7 @@ data:
       bucket: akuity-arkose-demo
       region: us-west-1
       useSDKCreds: true
-      keyFormat: "dev/many-wf/goodbyes/{{pod.name}}"
+      keyFormat: "dev/many-wf/hellos/{{pod.name}}"
 kind: ConfigMap
 metadata:
   annotations:
