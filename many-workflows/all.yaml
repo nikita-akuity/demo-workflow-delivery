@@ -246,37 +246,20 @@ metadata:
 spec:
   arguments:
     parameters:
-    - name: cm-name
-      value: default-cm
     - name: file
       value: ""
   artifactRepositoryRef:
     configMap: dev-artifact-repositories
     key: goodbye-s3
-  entrypoint: goodbye-wf
+  entrypoint: replace-text
   serviceAccountName: arkose-demo
   templates:
-  - arguments:
-      parameters:
-      - name: file
-        value: '{{workflow.parameters.input-payload}}'
-      - name: search
-        value: hello
-      - name: replace
-        value: goodbye
-    name: goodbye-wf
-    template: replace-text
   - arguments:
       artifacts:
       - name: input-file
         path: /tmp/in.txt
         s3:
           key: '{{workflow.parameters.file}}'
-      parameters:
-      - name: search
-        value: hello
-      - name: replace
-        value: goodbye
     container:
       args:
       - --input-file
@@ -284,9 +267,9 @@ spec:
       - --output-file
       - /tmp/out.txt
       - --search
-      - '{{inputs.parameters.search}}'
+      - hello
       - --replace
-      - '{{inputs.parameters.replace}}'
+      - goodbye
       command:
       - python
       - rt.py
@@ -309,21 +292,15 @@ spec:
   artifactRepositoryRef:
     configMap: dev-artifact-repositories
     key: hello-s3
-  entrypoint: hello-wf
+  entrypoint: greet
   serviceAccountName: arkose-demo
   templates:
-  - arguments:
-      parameters:
-      - name: greeting
-        value: hello
-      - default: '{{workflow.parameters.names}}'
-        name: names
-    container:
+  - container:
       args:
       - --names
-      - '{{inputs.parameters.names}}'
+      - '{{workflow.parameters.names}}'
       - --greeting
-      - '{{inputs.parameters.greeting}}'
+      - hello
       - --output-file
       - /tmp/out.txt
       command:
