@@ -67,12 +67,12 @@ data:
       bucket: example-bucket-name
       region: us-west-1
       useSDKCreds: true
-      keyFormat: >-
-        prefix/
-          {{workflow.creationTimestamp.Y}}-
-          {{workflow.creationTimestamp.m}}-
-          {{workflow.creationTimestamp.d}}/
-        {{workflow.name}}/{{pod.name}}
+      keyFormat: "prefix\
+        /{{workflow.creationTimestamp.Y}}-\
+        {{workflow.creationTimestamp.m}}-\
+        {{workflow.creationTimestamp.d}}\
+        /{{workflow.name}}\
+        /{{pod.name}}"
 kind: ConfigMap
 metadata:
   annotations:
@@ -183,7 +183,9 @@ spec:
     name: greet
     outputs:
       artifacts:
-      - name: output-file
+      - archive:
+          none: {}
+        name: output-file
         path: /tmp/out.txt
   - container:
       args:
@@ -214,21 +216,16 @@ spec:
     name: replace-text
     outputs:
       artifacts:
-      - name: output-file
+      - archive:
+          none: {}
+        name: output-file
         path: /tmp/out.txt
-        s3:
-          key: '{{pod.name}}.txt'
-      parameters:
-      - name: key
-        value: ' {{pod.name}}.txt'
   - container:
       args:
       - --input-file
       - /tmp/in.txt
       - --string
       - '{{inputs.parameters.string}}'
-      - '>/tmp/result'
-      - 2>/tmp/err.log
       command:
       - python
       - count.py
@@ -241,12 +238,6 @@ spec:
       - default: default
         name: string
     name: count
-    outputs:
-      parameters:
-      - name: number
-        valueFrom:
-          default: "0"
-          path: /tmp/result
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
@@ -374,9 +365,11 @@ spec:
     outputs:
       parameters:
       - name: count-hellos
-        value: '{{steps.count-hellos.outputs.result}}'
+        valueFrom:
+          parameter: '{{steps.count-hellos.outputs.result}}'
       - name: count-goodbyes
-        value: '{{steps.count-goodbyes.outputs.result}}'
+        valueFrom:
+          parameter: '{{steps.count-goodbyes.outputs.result}}'
     steps:
     - - arguments:
           parameters:
