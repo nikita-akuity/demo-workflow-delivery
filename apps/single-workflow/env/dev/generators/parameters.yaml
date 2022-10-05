@@ -9,5 +9,6 @@ options:
       workflows.argoproj.io/configmap-type: Parameter
 literals:
 - bucket=akuity-arkose-demo
+- key-prefix=dev-artifacts
 - table-name=dev_statistics
 - db-connection-secret=db-connection-dev
