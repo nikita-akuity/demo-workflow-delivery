@@ -419,9 +419,7 @@ spec:
             value: '{{tasks.sum-hellos.outputs.result}}'
           - name: sum-goodbye
             value: '{{tasks.sum-goodbyes.outputs.result}}'
-        dependencies:
-        - sum-hellos
-        - sum-goodbyes
+        depends: sum-hellos && sum-goodbyes
         name: write-result
         templateRef:
           name: script-templates
