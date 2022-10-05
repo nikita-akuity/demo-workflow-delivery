@@ -301,7 +301,7 @@ spec:
       command:
       - bash
       envFrom:
-        secretRef:
+      - secretRef:
           name: '{{inputs.parameters.db-connection-secret}}'
       image: mysql:8-debian
       source: |
