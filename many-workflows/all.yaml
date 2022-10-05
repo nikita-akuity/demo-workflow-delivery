@@ -1,4 +1,99 @@
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::541216676946:role/arkose-demo-many-wf-dev
+  name: arkose-demo
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operate-workflow-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: executor
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflowtaskresults
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operate-workflow-role
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflows
+  - workflowtemplates
+  - cronworkflows
+  - clusterworkflowtemplates
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: executor-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: executor
+subjects:
+- kind: ServiceAccount
+  name: arkose-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operate-workflow-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operate-workflow-role
+subjects:
+- kind: ServiceAccount
+  name: operate-workflow-sa
+---
+apiVersion: v1
+data:
+  goodbye-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: akuity-arkose-demo
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "dev/many-wf/goodbyes/{{pod.name}}"
+  hello-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: akuity-arkose-demo
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "dev/many-wf/goodbyes/{{pod.name}}"
+kind: ConfigMap
+metadata:
+  annotations:
+    workflows.argoproj.io/default-artifact-repository: demo-s3
+  name: dev-artifact-repositories
+---
+apiVersion: v1
+data:
+  table-name: dev_statistics
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: dev-parameters
+---
+apiVersion: v1
 data:
   example-goodbye-s3: |
     s3:
@@ -87,6 +182,8 @@ spec:
   - eventName: example
     eventSourceName: s3-new-files-sqs
     name: sqs-dep
+  template:
+    serviceAccountName: operate-workflow-sa
   triggers:
   - template:
       argoWorkflow:
@@ -116,6 +213,8 @@ spec:
   - eventName: greet
     eventSourceName: webhook
     name: wh-dep
+  template:
+    serviceAccountName: operate-workflow-sa
   triggers:
   - template:
       argoWorkflow:
@@ -152,9 +251,10 @@ spec:
     - name: file
       value: ""
   artifactRepositoryRef:
-    configMap: example-artifact-repositories
-    key: example-goodbye-s3
+    configMap: dev-artifact-repositories
+    key: goodbye-s3
   entrypoint: goodbye-wf
+  serviceAccountName: arkose-demo
   templates:
   - arguments:
       parameters:
@@ -207,9 +307,10 @@ spec:
     - name: names
       value: ""
   artifactRepositoryRef:
-    configMap: example-artifact-repositories
-    key: example-hello-s3
+    configMap: dev-artifact-repositories
+    key: hello-s3
   entrypoint: hello-wf
+  serviceAccountName: arkose-demo
   templates:
   - arguments:
       parameters:
@@ -236,3 +337,50 @@ spec:
           none: {}
         name: output-file
         path: /tmp/out.txt
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-connection-dev
+spec:
+  data:
+  - remoteRef:
+      key: arkose-demo/db/many-wf-dev
+      property: host
+    secretKey: DB_HOST
+  - remoteRef:
+      key: arkose-demo/db/many-wf-dev
+      property: port
+    secretKey: DB_PORT
+  - remoteRef:
+      key: arkose-demo/db/many-wf-dev
+      property: database
+    secretKey: DB_NAME
+  - remoteRef:
+      key: arkose-demo/db/many-wf-dev
+      property: user
+    secretKey: DB_USER
+  - remoteRef:
+      key: arkose-demo/db/many-wf-dev
+      property: password
+    secretKey: DB_PASSWORD
+  refreshInterval: 10m
+  secretStoreRef:
+    kind: SecretStore
+    name: demo-db-connect
+  target:
+    name: db-connection-dev
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: demo-db-connect
+spec:
+  provider:
+    aws:
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: arkose-demo
+      region: us-west-1
+      service: SecretsManager
