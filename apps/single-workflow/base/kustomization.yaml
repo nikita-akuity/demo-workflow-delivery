@@ -3,4 +3,10 @@ kind: Kustomization
 resources:
   - https://github.com/nikita-akuity/demo-workflow//manifests/single-workflow/?ref=d812402e03b9dbfc7e6658878398bc17ec2c74e6
   - eventbus.yaml
-  - executor-role.yaml
+  - rbac
+
+openapi:
+  path: https://raw.githubusercontent.com/argoproj/argo-schema-generator/main/schema/argo_events_kustomize_schema.json
+
+patchesStrategicMerge:
+- rbac-patch.yaml
