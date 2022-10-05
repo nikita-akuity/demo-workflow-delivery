@@ -3,20 +3,12 @@ kind: Kustomization
 
 resources:
 - ../../base
-- sa.yaml
-- db-connection.yaml
+- secrets
+- rbac
 
-configMapGenerator:
-- literals:
-  - bucket=dev
-  - roleARN=dev
-  - table-name=dev
-  - db-connection-secret=db-connection-dev
-  name: dev-config
-  options:
-    disableNameSuffixHash: true
-    labels:
-      workflows.argoproj.io/configmap-type: Parameter
+generators:
+- generators/parameters.yaml
+- generators/artifacts.yaml
 
 openapi:
   path: https://raw.githubusercontent.com/argoproj/argo-schema-generator/main/schema/argo_workflows_kustomize_schema.json

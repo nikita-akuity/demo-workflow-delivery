@@ -3,6 +3,10 @@ kind: WorkflowTemplate
 metadata:
   name: single-wf-template
 spec:
+  serviceAccountName: arkose-demo
+  artifactRepositoryRef:
+    configMap: dev-artifacts
+    key: demo-s3
   arguments:
     parameters:
-    - {name: cm-name, value: dev-config}
+    - {name: cm-name, value: dev-parameters}

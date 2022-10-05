@@ -1,0 +1,4 @@
+s3:
+  bucket: akuity-arkose-demo
+  region: us-west-1
+  useSDKCreds: true
