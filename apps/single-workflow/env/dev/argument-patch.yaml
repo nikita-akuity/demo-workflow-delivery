@@ -9,4 +9,10 @@ spec:
     key: demo-s3
   arguments:
     parameters:
+    - {name: mysql-connection-secret, value: db-connection-dev}
     - {name: cm-name, value: dev-parameters}
+    - name: mysql-table-name
+      valueFrom:
+        configMapKeyRef:
+          name: dev-parameters
+          key: table-name
