@@ -5,6 +5,11 @@ metadata:
     eks.amazonaws.com/role-arn: arn:aws:iam::541216676946:role/arkose-demo-single-wf-dev
   name: arkose-demo
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operate-workflow-sa
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -19,6 +24,21 @@ rules:
   - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operate-workflow-role
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflows
+  - workflowtemplates
+  - cronworkflows
+  - clusterworkflowtemplates
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: executor-demo
@@ -29,6 +49,18 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: arkose-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operate-workflow-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operate-workflow-role
+subjects:
+- kind: ServiceAccount
+  name: operate-workflow-sa
 ---
 apiVersion: v1
 data:
@@ -134,6 +166,8 @@ spec:
   - eventName: greet-and-count
     eventSourceName: webhook
     name: wh-dep
+  template:
+    serviceAccountName: operate-workflow-sa
   triggers:
   - template:
       argoWorkflow:
