@@ -7,39 +7,62 @@ metadata:
 ---
 apiVersion: v1
 data:
-  bucket: default
-  bucket-key: single-wf
-  db-connection-secret: db-connection-example
-  roleARN: default
-  table-name: default
+  demo-s3: |
+    s3:
+      bucket: akuity-arkose-demo
+      region: us-west-1
+      useSDKCreds: true
 kind: ConfigMap
 metadata:
-  labels:
-    workflows.argoproj.io/configmap-type: Parameter
-  name: default-cm
+  annotations:
+    workflows.argoproj.io/default-artifact-repository: demo-s3
+  name: dev-artifact-repositories
 ---
 apiVersion: v1
 data:
-  bucket: dev
+  bucket: akuity-arkose-demo
   db-connection-secret: db-connection-dev
-  roleARN: dev
-  table-name: dev
+  table-name: dev_statistics
 kind: ConfigMap
 metadata:
   labels:
     workflows.argoproj.io/configmap-type: Parameter
-  name: dev-config
+  name: dev-parameters
 ---
 apiVersion: v1
 data:
-  DB_HOST: ZGIuaG9zdG5hbQ==
+  example-s3: |
+    s3:
+      bucket: example-bucket-name
+      region: us-west-1
+      useSDKCreds: true
+kind: ConfigMap
+metadata:
+  annotations:
+    workflows.argoproj.io/default-artifact-repository: example-s3
+  name: example-artifacts
+---
+apiVersion: v1
+data:
+  db-connection-secret: example-db-connect
+  key-prefix: my-workflow
+  table-name: results
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: example-parameters
+---
+apiVersion: v1
+data:
+  DB_HOST: ZGIuaG9zdG5hbWU=
   DB_NAME: ZGF0YWJhc2VfbmFtZQ==
   DB_PASSWORD: c2VjcmV0UGFzc1cwcmQ=
   DB_PORT: MzYwMA==
   DB_USER: ZGF0YWJhc2VfdXNlcg==
 kind: Secret
 metadata:
-  name: db-connection-example
+  name: example-db-connect
 type: Opaque
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -116,8 +139,6 @@ spec:
       image: ghcr.io/nikita-akuity/greetings:sha-1882e20
     inputs:
       parameters:
-      - name: bucket-name
-      - name: roleARN
       - default: ""
         name: key-prefix
       - default: default
@@ -132,8 +153,6 @@ spec:
         name: output-file
         path: /tmp/out.txt
         s3:
-          bucket: '{{inputs.parameters.bucket-name}}'
-          endpoint: s3.amazonaws.com
           key: |-
             {{inputs.parameters.key-prefix}}/
 
@@ -141,7 +160,6 @@ spec:
               {{workflow.creationTimestamp.m}}-
               {{workflow.creationTimestamp.d}}/
             {{workflow.name}}/ {{pod.name}}.txt
-          roleARN: '{{inputs.parameters.roleARN}}'
       parameters:
       - name: key
         value: |-
@@ -170,14 +188,9 @@ spec:
       - name: input-file
         path: /tmp/in.txt
         s3:
-          bucket: '{{inputs.parameters.bucket-name}}'
-          endpoint: s3.amazonaws.com
-          key: '{{inputs.parameters.key}}'
-          roleARN: '{{inputs.parameters.roleARN}}'
+          key: '{{inputs.parameters.input-key}}'
       parameters:
-      - name: bucket-name
-      - name: roleARN
-      - name: key
+      - name: input-key
       - default: ""
         name: key-prefix
       - default: default
@@ -190,8 +203,6 @@ spec:
       - name: output-file
         path: /tmp/out.txt
         s3:
-          bucket: '{{inputs.parameters.bucket-name}}'
-          endpoint: s3.amazonaws.com
           key: |-
             {{inputs.parameters.key-prefix}}/
 
@@ -199,7 +210,6 @@ spec:
               {{workflow.creationTimestamp.m}}-
               {{workflow.creationTimestamp.d}}/
             {{workflow.name}}/ {{pod.name}}.txt
-          roleARN: '{{inputs.parameters.roleARN}}'
       parameters:
       - name: key
         value: |-
@@ -226,14 +236,9 @@ spec:
       - name: input-file
         path: /tmp/in.txt
         s3:
-          bucket: '{{inputs.parameters.bucket-name}}'
-          endpoint: s3.amazonaws.com
           key: '{{inputs.parameters.key}}'
-          roleARN: '{{inputs.parameters.roleARN}}'
       parameters:
-      - name: bucket-name
-      - name: roleARN
-      - name: key
+      - name: input-key
       - default: default
         name: string
     name: count
@@ -295,32 +300,9 @@ spec:
     script:
       command:
       - bash
-      env:
-      - name: DB_HOST
-        valueFrom:
-          secretKeyRef:
-            key: host
-            name: '{{inputs.parameters.db-connection-secret}}'
-      - name: DB_PORT
-        valueFrom:
-          secretKeyRef:
-            key: port
-            name: '{{inputs.parameters.db-connection-secret}}'
-      - name: DB_NAME
-        valueFrom:
-          secretKeyRef:
-            key: database
-            name: '{{inputs.parameters.db-connection-secret}}'
-      - name: DB_USER
-        valueFrom:
-          secretKeyRef:
-            key: user
-            name: '{{inputs.parameters.db-connection-secret}}'
-      - name: DB_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            key: password
-            name: '{{inputs.parameters.db-connection-secret}}'
+      envFrom:
+        secretRef:
+          name: '{{inputs.parameters.db-connection-secret}}'
       image: mysql:8-debian
       source: |
         mysql --host=$DB_HOST --port=$DB_PORT --user=$DB_USER --password=$DB_PASSWORD $DB_NAME < /tmp/query.sql
@@ -333,24 +315,23 @@ spec:
   arguments:
     parameters:
     - name: cm-name
-      value: dev-config
+      value: dev-parameters
     - name: input-payload
       value: '[]'
+  artifactRepositoryRef:
+    configMap: dev-artifact-repositories
+    key: demo-s3
   entrypoint: single-wf
+  serviceAccountName: arkose-demo
   templates:
   - dag:
       tasks:
       - arguments:
           parameters:
-          - name: bucket
+          - name: key-prefix
             valueFrom:
               configMapKeyRef:
-                key: bucket
-                name: '{{workflow.inputs.parameters.cm-name}}'
-          - name: roleARN
-            valueFrom:
-              configMapKeyRef:
-                key: roleARN
+                key: key-prefix
                 name: '{{workflow.inputs.parameters.cm-name}}'
           - name: greeting
             value: hello
@@ -363,21 +344,16 @@ spec:
         withParam: '{{workflow.inputs.parameters.input-payload}}'
       - arguments:
           parameters:
-          - name: bucket
+          - name: key-prefix
             valueFrom:
               configMapKeyRef:
-                key: bucket
-                name: '{{workflow.inputs.parameters.cm-name}}'
-          - name: roleARN
-            valueFrom:
-              configMapKeyRef:
-                key: roleARN
+                key: key-prefix
                 name: '{{workflow.inputs.parameters.cm-name}}'
           - name: search
             value: hello
           - name: replace
             value: goodbye
-          - name: key
+          - name: input-key
             value: '{{item}}'
         name: goodbyes
         templateRef:
@@ -386,19 +362,9 @@ spec:
         withParam: '{{tasks.greetings.outputs.parameters.key}}'
       - arguments:
           parameters:
-          - name: bucket
-            valueFrom:
-              configMapKeyRef:
-                key: bucket
-                name: '{{workflow.inputs.parameters.cm-name}}'
-          - name: roleARN
-            valueFrom:
-              configMapKeyRef:
-                key: roleARN
-                name: '{{workflow.inputs.parameters.cm-name}}'
           - name: string
             value: hello
-          - name: key
+          - name: input-key
             value: '{{item}}'
         name: count-hellos
         templateRef:
@@ -407,19 +373,9 @@ spec:
         withParam: '{{tasks.greetings.outputs.parameters.key}}'
       - arguments:
           parameters:
-          - name: bucket
-            valueFrom:
-              configMapKeyRef:
-                key: bucket
-                name: '{{workflow.inputs.parameters.cm-name}}'
-          - name: roleARN
-            valueFrom:
-              configMapKeyRef:
-                key: roleARN
-                name: '{{workflow.inputs.parameters.cm-name}}'
           - name: string
             value: goodbye
-          - name: key
+          - name: input-key
             value: '{{item}}'
         name: count-goodbyes
         templateRef:
