@@ -355,6 +355,7 @@ spec:
             value: goodbye
           - name: input-key
             value: '{{item}}'
+        depends: greetings
         name: goodbyes
         templateRef:
           name: container-templates
@@ -366,6 +367,7 @@ spec:
             value: hello
           - name: input-key
             value: '{{item}}'
+        depends: greetings
         name: count-hellos
         templateRef:
           name: container-templates
@@ -377,6 +379,7 @@ spec:
             value: goodbye
           - name: input-key
             value: '{{item}}'
+        depends: goodbyes
         name: count-goodbyes
         templateRef:
           name: container-templates
@@ -386,6 +389,7 @@ spec:
           parameters:
           - name: numbers
             value: '{{tasks.count-hellos.outputs.parameters.number}}'
+        depends: count-hellos
         name: sum-hellos
         templateRef:
           name: script-templates
@@ -394,6 +398,7 @@ spec:
           parameters:
           - name: numbers
             value: '{{tasks.count-goodbyes.outputs.parameters.number}}'
+        depends: count-goodbyes
         name: sum-goodbyes
         templateRef:
           name: script-templates
@@ -414,6 +419,9 @@ spec:
             value: '{{tasks.sum-hellos.outputs.result}}'
           - name: sum-goodbye
             value: '{{tasks.sum-goodbyes.outputs.result}}'
+        dependencies:
+        - sum-hellos
+        - sum-goodbyes
         name: write-result
         templateRef:
           name: script-templates
