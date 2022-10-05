@@ -332,7 +332,7 @@ spec:
             valueFrom:
               configMapKeyRef:
                 key: key-prefix
-                name: '{{workflow.inputs.parameters.cm-name}}'
+                name: '{{workflow.parameters.cm-name}}'
           - name: greeting
             value: hello
           - name: names
@@ -341,14 +341,14 @@ spec:
         templateRef:
           name: container-templates
           template: greet
-        withParam: '{{workflow.inputs.parameters.input-payload}}'
+        withParam: '{{workflow.parameters.input-payload}}'
       - arguments:
           parameters:
           - name: key-prefix
             valueFrom:
               configMapKeyRef:
                 key: key-prefix
-                name: '{{workflow.inputs.parameters.cm-name}}'
+                name: '{{workflow.parameters.cm-name}}'
           - name: search
             value: hello
           - name: replace
@@ -409,12 +409,12 @@ spec:
             valueFrom:
               configMapKeyRef:
                 key: table-name
-                name: '{{workflow.inputs.parameters.cm-name}}'
+                name: '{{workflow.parameters.cm-name}}'
           - name: db-connection-secret}
             valueFrom:
               configMapKeyRef:
                 key: db-connection-secret
-                name: '{{workflow.inputs.parameters.cm-name}}'
+                name: '{{workflow.parameters.cm-name}}'
           - name: sum-hello
             value: '{{tasks.sum-hellos.outputs.result}}'
           - name: sum-goodbye
