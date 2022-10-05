@@ -298,8 +298,6 @@ spec:
     parameters:
     - name: mysql-connection-secret
       value: db-connection-dev
-    - name: cm-name
-      value: dev-parameters
     - name: mysql-table-name
       valueFrom:
         configMapKeyRef:
