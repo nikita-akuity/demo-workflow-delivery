@@ -3,6 +3,8 @@ kind: Sensor
 metadata:
   name: aws-sqs
 spec:
+  template:
+    serviceAccountName: arkose-demo
   dependencies:
     - name: sqs-hello-dep
       eventSourceName: s3-sqs
