@@ -24,6 +24,8 @@ kind: EventSource
 metadata:
   name: s3-sqs
 spec:
+  template:
+    serviceAccountName: arkose-demo
   sqs:
     object-created:
       region: us-west-1
