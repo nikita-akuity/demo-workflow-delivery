@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Sensor
 metadata:
-  name: webhook
+  name: start-pipeline
 spec:
   template:
     serviceAccountName: operate-workflow-sa
