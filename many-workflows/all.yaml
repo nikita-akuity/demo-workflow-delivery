@@ -186,6 +186,8 @@ spec:
       queue: arkose-demo-s3-notification
       region: us-west-1
       waitTimeSeconds: 20
+  template:
+    serviceAccountName: arkose-demo
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
