@@ -297,6 +297,11 @@ metadata:
   name: goodbye-wf-template
 spec:
   arguments:
+    artifacts:
+    - name: input-file
+      s3:
+        bucket: '{{workflow.parameters.bucket}}'
+        key: '{{workflow.parameters.key}}'
     parameters:
     - name: bucket
       value: example-bucket
@@ -308,14 +313,7 @@ spec:
   entrypoint: replace-text
   serviceAccountName: arkose-demo
   templates:
-  - arguments:
-      artifacts:
-      - name: input-file
-        path: /tmp/in.txt
-        s3:
-          bucket: '{{workflow.parameters.bucket}}'
-          key: '{{workflow.parameters.key}}'
-    container:
+  - container:
       args:
       - --input-file
       - /tmp/in.txt
@@ -329,6 +327,10 @@ spec:
       - python
       - rt.py
       image: ghcr.io/nikita-akuity/replace-text:sha-1882e20
+    inputs:
+      artifacts:
+      - name: input-file
+        path: /tmp/in.txt
     name: replace-text
     outputs:
       artifacts:
