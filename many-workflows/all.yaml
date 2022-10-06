@@ -175,6 +175,19 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
 metadata:
+  name: calendar
+spec:
+  calendar:
+    every-seven-minutes:
+      interval: 7m
+      metadata:
+        names: Hong,Jesse,Alex
+    ten-past-hour:
+      schedule: 10 * * * *
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
   name: s3-sqs
 spec:
   sqs:
@@ -259,12 +272,15 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Sensor
 metadata:
-  name: webhook
+  name: start-pipeline
 spec:
   dependencies:
   - eventName: greet
     eventSourceName: webhook
     name: wh-dep
+  - eventName: every-seven-minutes
+    eventSourceName: calendar
+    name: cal-dep
   template:
     serviceAccountName: operate-workflow-sa
   triggers:
@@ -276,6 +292,11 @@ spec:
           src:
             dataKey: body.names
             dependencyName: wh-dep
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: body.userPayload.names
+            dependencyName: cal-dep
+            value: Default,Names
         source:
           resource:
             apiVersion: argoproj.io/v1alpha1
@@ -289,6 +310,7 @@ spec:
                   value: to,be,replaced
               workflowTemplateRef:
                 name: hello-wf-template
+      conditions: wh-dep || cal-dep
       name: webhook-workflow-trigger
 ---
 apiVersion: argoproj.io/v1alpha1
