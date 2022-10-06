@@ -5,6 +5,8 @@ metadata:
 spec:
   dependencies:
     - name: sqs-hello-dep
+      eventSourceName: s3-sqs
+      eventName: object-created
       filters:
         data:
         - path: body.Records.0.s3.bucket.name
