@@ -70,7 +70,7 @@ data:
       bucket: akuity-arkose-demo
       region: us-west-1
       useSDKCreds: true
-      keyFormat: "dev\
+      keyFormat: "dev/single-wf\
         /{{workflow.creationTimestamp.Y}}-\
         {{workflow.creationTimestamp.m}}-\
         {{workflow.creationTimestamp.d}}\
