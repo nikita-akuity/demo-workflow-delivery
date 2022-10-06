@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - https://github.com/nikita-akuity/demo-workflow//manifests/many-workflows/?ref=c33a83578a0b7cb178b3fbf161915fee0340ab05
+  - https://github.com/nikita-akuity/demo-workflow//manifests/many-workflows/?ref=08f53f5d53f447f76e0d6e90b1c4f3465c37224e
   - eventbus.yaml
   - rbac
 patchesStrategicMerge:
