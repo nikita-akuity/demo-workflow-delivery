@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - https://github.com/nikita-akuity/demo-workflow//manifests/single-workflow/?ref=7bde6399b43a8685b00ab88a8a437c7be4064af3
+  - https://github.com/nikita-akuity/demo-workflow//manifests/single-workflow/?ref=37608296d22596e15fa17b8c55b3610001738b68
   - eventbus.yaml
   - rbac
 openapi:
