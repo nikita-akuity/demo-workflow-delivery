@@ -53,6 +53,18 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  name: operate-workflow-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operate-workflow-role
+subjects:
+- kind: ServiceAccount
+  name: arkose-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
   name: operate-workflow-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -210,7 +222,7 @@ spec:
         - ^dev/many-wf/hellos/
     name: sqs-hello-dep
   template:
-    serviceAccountName: operate-workflow-sa
+    serviceAccountName: arkose-demo
   triggers:
   - template:
       argoWorkflow:
