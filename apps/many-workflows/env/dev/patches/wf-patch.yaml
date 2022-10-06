@@ -1,6 +1,16 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
+  name: hello-wf-template
+spec:
+  serviceAccountName: arkose-demo
+  artifactRepositoryRef:
+    configMap: dev-artifact-repositories
+    key: hello-s3
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
   name: goodbye-wf-template
 spec:
   serviceAccountName: arkose-demo

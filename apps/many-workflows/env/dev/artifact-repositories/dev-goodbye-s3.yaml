@@ -3,4 +3,8 @@ s3:
   bucket: akuity-arkose-demo
   region: us-west-1
   useSDKCreds: true
-  keyFormat: "dev/many-wf/goodbyes/{{pod.name}}"
+  keyFormat: "dev/many-wf/goodbyes\
+    /{{workflow.creationTimestamp.Y}}-\
+    {{workflow.creationTimestamp.m}}-\
+    {{workflow.creationTimestamp.d}}\
+    /{{workflow.creationTimestamp.H}}"

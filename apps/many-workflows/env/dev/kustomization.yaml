@@ -11,11 +11,11 @@ generators:
 - generators/artifact-repositories.yaml
 
 openapi:
-  path: https://raw.githubusercontent.com/argoproj/argo-schema-generator/main/schema/argo_workflows_kustomize_schema.json
+  path: https://raw.githubusercontent.com/argoproj/argo-schema-generator/main/schema/argo_all_k8s_kustomize_schema.json
 
 patchesStrategicMerge:
-- patches/hello-patch.yaml
-- patches/goodbye-patch.yaml
+- patches/wf-patch.yaml
+- patches/sqs-patch.yaml
 
 images:
 - name: count
