@@ -183,7 +183,7 @@ spec:
       metadata:
         names: Hong,Jesse,Alex
     ten-past-hour:
-      schedule: 10 * * * *
+      schedule: /5 * * * *
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
@@ -272,6 +272,41 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Sensor
 metadata:
+  name: count-all
+spec:
+  dependencies:
+  - eventName: ten-past-hour
+    eventSourceName: calendar
+    name: cal-dep
+  template:
+    serviceAccountName: operate-workflow-sa
+  triggers:
+  - template:
+      argoWorkflow:
+        operation: submit
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: eventTime
+            dependencyName: cal-dep
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: count-
+            spec:
+              arguments:
+                parameters:
+                - name: timestamp
+                  value: ""
+              workflowTemplateRef:
+                name: count-wf-template
+      name: webhook-workflow-trigger
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
   name: start-pipeline
 spec:
   dependencies:
@@ -312,6 +347,35 @@ spec:
                 name: hello-wf-template
       conditions: wh-dep || cal-dep
       name: webhook-workflow-trigger
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: count-wf-template
+spec:
+  arguments:
+    parameters:
+    - name: timestamp
+      value: 2000-01-01 12:00
+  entrypoint: count-all
+  templates:
+  - name: count-all
+    steps:
+    - - arguments:
+          folder: '{{workflow.parameters.timestamp}}'
+        name: list-files
+        template: list-files
+  - inputs:
+      parameters:
+      - default: .
+        name: folder
+    name: list-files
+    script:
+      command:
+      - bash
+      image: bash
+      source: |
+        echo {{inputs.parameters.folder}}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
