@@ -216,6 +216,7 @@ spec:
                   value: '[]'
               workflowTemplateRef:
                 name: single-wf-template
+      conditions: wh-dep || cal-dep
       name: webhook-workflow-trigger
 ---
 apiVersion: argoproj.io/v1alpha1
