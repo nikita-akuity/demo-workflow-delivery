@@ -398,19 +398,24 @@ spec:
   - name: count-all
     steps:
     - - arguments:
+          parameters:
+          - name: message
+            value: '{{workflow.parameters.hello-key-prefix}}/{{=sprig.replace('' '',''/'',sprig.trunc(13,workflow.parameters.timestamp))}}'
+        name: debug
+        template: debug
+    - - arguments:
           artifacts:
           - name: folder
             s3:
-              key: '{{workflow.parameters.hello-key-prefix}} /{{=trunc(13,workflow.parameters.timestamp)
-                | replace " " "/"}}'
+              key: '{{workflow.parameters.hello-key-prefix}}/{{=sprig.replace('' '',''/'',sprig.trunc(13,workflow.parameters.timestamp))}}'
         name: list-hello-files
         template: list-files
       - arguments:
           artifacts:
           - name: folder
             s3:
-              key: '{{workflow.parameters.goodbye-key-prefix}} /{{=trunc(13,workflow.parameters.timestamp)
-                | replace " " "/"}}'
+              key: '{{workflow.parameters.goodbye-key-prefix}}/{{=sprig.replace(''
+                '',''/'',sprig.trunc(13,workflow.parameters.timestamp))}}'
         name: list-goodbye-files
         template: list-files
   - inputs:
@@ -424,6 +429,17 @@ spec:
       image: bash
       source: |
         ls -lah /workdir
+  - inputs:
+      parameters:
+      - default: ""
+        name: message
+    name: debug
+    script:
+      command:
+      - bash
+      image: bash
+      source: |
+        echo {{inputs.parameters.message}}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
