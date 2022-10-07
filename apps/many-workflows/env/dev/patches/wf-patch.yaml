@@ -39,3 +39,10 @@ spec:
         configMapKeyRef:
           name: dev-parameters
           key: goodbye-key-prefix
+    - name: mysql-table-name
+      valueFrom:
+        configMapKeyRef:
+          name: dev-parameters
+          key: table-name
+    - name: mysql-connection-secret
+      value: db-connection-dev
