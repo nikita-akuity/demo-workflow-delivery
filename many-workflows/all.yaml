@@ -76,6 +76,17 @@ subjects:
 ---
 apiVersion: v1
 data:
+  count-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: akuity-arkose-demo
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "dev/many-wf/count\
+        /{{workflow.creationTimestamp.Y}}-\
+        {{workflow.creationTimestamp.m}}-\
+        {{workflow.creationTimestamp.d}}\
+        /{{workflow.creationTimestamp.H}}"
   goodbye-s3: |
     s3:
       endpoint: s3.amazonaws.com
@@ -100,8 +111,6 @@ data:
         /{{workflow.creationTimestamp.H}}"
 kind: ConfigMap
 metadata:
-  annotations:
-    workflows.argoproj.io/default-artifact-repository: demo-s3
   name: dev-artifact-repositories
 ---
 apiVersion: v1
@@ -363,7 +372,11 @@ spec:
     parameters:
     - name: timestamp
       value: 2000-01-01 12:00
+  artifactRepositoryRef:
+    configMap: dev-artifact-repositories
+    key: goodbye-s3
   entrypoint: count-all
+  serviceAccountName: arkose-demo
   templates:
   - name: count-all
     steps:
