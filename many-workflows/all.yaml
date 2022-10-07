@@ -457,7 +457,7 @@ spec:
           artifacts:
           - name: input-file
             s3:
-              key: '{{inputs.parameters.key-prefix}}/{{item}}'
+              key: '{{inputs.parameters.key-prefix}}/{{=sprig.replace('' '',''/'',sprig.trunc(13,workflow.parameters.timestamp))}}/{{item}}'
           parameters:
           - name: string
             value: '{{inputs.parameters.string}}'
