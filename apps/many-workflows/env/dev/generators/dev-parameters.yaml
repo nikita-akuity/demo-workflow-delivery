@@ -9,3 +9,5 @@ options:
       workflows.argoproj.io/configmap-type: Parameter
 literals:
 - table-name=dev_statistics
+- hello-key-prefix=dev/many-wf/hellos
+- goodbye-key-prefix=dev/many-wf/goodbyes
