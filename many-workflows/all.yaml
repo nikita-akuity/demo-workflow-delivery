@@ -198,7 +198,7 @@ spec:
     ten-past-hour:
       metadata:
         targetTime: ""
-      schedule: '*/5 * * * *'
+      schedule: 10 * * * *
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
