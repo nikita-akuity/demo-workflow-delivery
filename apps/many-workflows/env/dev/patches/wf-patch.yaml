@@ -27,3 +27,15 @@ spec:
   artifactRepositoryRef:
     configMap: dev-artifact-repositories
     key: count-s3
+  arguments:
+    parameters:
+    - name: hello-key-prefix
+      valueFrom:
+        configMapKeyRef:
+          name: dev-parameters
+          key: hello-key-prefix
+    - name: goodbye-key-prefix
+      valueFrom:
+        configMapKeyRef:
+          name: dev-parameters
+          key: goodbye-key-prefix
