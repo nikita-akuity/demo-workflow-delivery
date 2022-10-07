@@ -5,3 +5,11 @@ metadata:
 spec:
   template:
     serviceAccountName: operate-workflow-sa
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: count-all
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
