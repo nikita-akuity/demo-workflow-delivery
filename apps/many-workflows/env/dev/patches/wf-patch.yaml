@@ -17,3 +17,13 @@ spec:
   artifactRepositoryRef:
     configMap: dev-artifact-repositories
     key: goodbye-s3
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: count-wf-template
+spec:
+  serviceAccountName: arkose-demo
+  artifactRepositoryRef:
+    configMap: dev-artifact-repositories
+    key: goodbye-s3
