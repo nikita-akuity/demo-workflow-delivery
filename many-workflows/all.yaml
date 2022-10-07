@@ -183,7 +183,7 @@ spec:
       metadata:
         names: Hong,Jesse,Alex
     ten-past-hour:
-      schedule: /5 * * * *
+      schedule: '*/5 * * * *'
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
@@ -329,7 +329,7 @@ spec:
             dependencyName: wh-dep
         - dest: spec.arguments.parameters.0.value
           src:
-            dataKey: body.userPayload.names
+            dataKey: userPayload.names
             dependencyName: cal-dep
             value: Default,Names
         source:
