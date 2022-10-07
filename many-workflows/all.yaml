@@ -387,15 +387,15 @@ spec:
         configMapKeyRef:
           key: goodbye-key-prefix
           name: dev-parameters
-    - name: timestamp
-      value: "2000-01-01 12:00:00"
     - name: mysql-table-name
       valueFrom:
         configMapKeyRef:
           key: table-name
-          name: example-parameters
+          name: dev-parameters
     - name: mysql-connection-secret
-      value: example-db-connect
+      value: db-connection-dev
+    - name: timestamp
+      value: "2000-01-01 12:00:00"
   artifactRepositoryRef:
     configMap: dev-artifact-repositories
     key: count-s3
