@@ -182,11 +182,11 @@ spec:
     name: cal-dep
     transform:
       script: "math.randomseed(os.time())\nea = {\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\",\"k\",\"l\",\"m\",\"n\",\"0\",\"p\"}\nresult
-        = \"[\"\nlen = math.random(1,8)\nfor i=1,len do \n  local start = math.random(1,#ea-5)\n
-        \ local end = math.random(i,#ea)\n  local names = '\"'\n  for n=start,end
-        do\n    names = names..ea[n]\n    if n~=end then\n      names = names..\",\"\n
-        \   end\n  end\n  names = names..'\"'\n  result = result..names\n  if i~=len
-        then\n    result = result..\",\"\nend\nresult = result..\"]\"\nevent.metadata.names
+        = \"[\"\nlen = math.random(1,8)\nfor i=1,len do \n  local s = math.random(1,#ea-5)\n
+        \ local e = math.random(i,#ea)\n  local names = '\"'\n  for n=s,e do\n    names
+        = names..ea[n]\n    if n~=e then\n      names = names..\",\"\n    end\n  end\n
+        \ names = names..'\"'\n  result = result..names\n  if i~=len then\n    result
+        = result..\",\"\n  end\nend\nresult = result..\"]\"\nevent.metadata.names
         = result\nreturn event"
   template:
     serviceAccountName: operate-workflow-sa
