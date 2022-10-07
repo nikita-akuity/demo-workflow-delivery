@@ -377,18 +377,18 @@ metadata:
 spec:
   arguments:
     parameters:
-    - name: timestamp
-      value: "2000-01-01 12:00:00"
     - name: hello-key-prefix
       valueFrom:
         configMapKeyRef:
           key: hello-key-prefix
-          name: example-parameters
+          name: dev-parameters
     - name: goodbye-key-prefix
       valueFrom:
         configMapKeyRef:
           key: goodbye-key-prefix
-          name: example-parameters
+          name: dev-parameters
+    - name: timestamp
+      value: "2000-01-01 12:00:00"
   artifactRepositoryRef:
     configMap: dev-artifact-repositories
     key: count-s3
