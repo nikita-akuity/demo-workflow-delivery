@@ -278,6 +278,12 @@ spec:
   - eventName: ten-past-hour
     eventSourceName: calendar
     name: cal-dep
+    transform:
+      script: |-
+        pattern="(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)"
+        year,month,day,hour,min,sec=event.eventTime:match(pattern)
+        target_time=os.time({day=day,month=month,year=year,hour=hour-1,min=min,sec=sec})
+        event.userPayload.targetTime=os.date("%Y-%m-%d %H:%M:%S")
   template:
     serviceAccountName: operate-workflow-sa
   triggers:
@@ -287,7 +293,7 @@ spec:
         parameters:
         - dest: spec.arguments.parameters.0.value
           src:
-            dataKey: eventTime
+            dataKey: userPayload.targetTime
             dependencyName: cal-dep
         source:
           resource:
@@ -362,7 +368,9 @@ spec:
   - name: count-all
     steps:
     - - arguments:
-          folder: '{{workflow.parameters.timestamp}}'
+          parameters:
+          - name: folder
+            value: '{{workflow.parameters.timestamp}}'
         name: list-files
         template: list-files
   - inputs:
