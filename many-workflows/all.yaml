@@ -428,7 +428,7 @@ spec:
           - name: sum-hello
             value: '{{=jsonpath(steps.split.outputs.parameters.sum,''$[0]'')}}'
           - name: sum-goodbye
-          value: '{{=jsonpath(steps.split.outputs.parameters.sum,''$[1]'')}}'
+            value: '{{=jsonpath(steps.split.outputs.parameters.sum,''$[1]'')}}'
         name: write-result
         templateRef:
           name: script-templates
