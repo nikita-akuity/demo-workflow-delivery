@@ -426,9 +426,9 @@ spec:
           - name: db-connection-secret
             value: '{{workflow.parameters.mysql-connection-secret}}'
           - name: sum-hello
-            value: '{{=jsonpath(steps.split.outputs.sum),''$.0''}}'
+            value: '{{=jsonpath(steps.split.outputs.parameters.sum,''$[0]'')}}'
           - name: sum-goodbye
-            value: '{{=jsonpath(steps.split.outputs.sum),''$.1''}}'
+          value: '{{=jsonpath(steps.split.outputs.parameters.sum,''$[1]'')}}'
         name: write-result
         templateRef:
           name: script-templates
@@ -624,7 +624,7 @@ spec:
               SumGoodbye int(32),
               PRIMARY KEY (Id)
             );
-            INSERT INTO {{inputs.parameters.table-name}} (WorkflowName, WorkflowDateTime, SumHello, SumGoodbye)
+            INSERT INTO {{inputs.parameters.table-name}} (WorkflowName, TargetDateTime, SumHello, SumGoodbye)
             VALUES (
               '{{workflow.name}}',
               '{{inputs.parameters.timestamp}}',
