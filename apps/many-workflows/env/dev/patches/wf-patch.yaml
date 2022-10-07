@@ -26,4 +26,4 @@ spec:
   serviceAccountName: arkose-demo
   artifactRepositoryRef:
     configMap: dev-artifact-repositories
-    key: goodbye-s3
+    key: count-s3
