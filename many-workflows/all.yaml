@@ -282,7 +282,7 @@ spec:
               workflowTemplateRef:
                 name: goodbye-wf-template
       conditions: sqs-hello-dep
-      name: sqs-workflow-replace
+      name: replace-trigger
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Sensor
@@ -324,7 +324,7 @@ spec:
                   value: ""
               workflowTemplateRef:
                 name: count-wf-template
-      name: webhook-workflow-trigger
+      name: count-trigger
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Sensor
@@ -383,7 +383,7 @@ spec:
               workflowTemplateRef:
                 name: hello-wf-template
       conditions: wh-dep || cal-dep
-      name: webhook-workflow-trigger
+      name: start-pipeline-trigger
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
