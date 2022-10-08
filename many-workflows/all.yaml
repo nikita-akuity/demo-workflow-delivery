@@ -362,13 +362,13 @@ spec:
         parameters:
         - dest: spec.arguments.parameters.0.value
           src:
-            dataKey: body.names
-            dependencyName: wh-dep
-        - dest: spec.arguments.parameters.0.value
-          src:
             dataKey: metadata.names
             dependencyName: cal-dep
             value: Default,Names
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: body.names
+            dependencyName: wh-dep
         source:
           resource:
             apiVersion: argoproj.io/v1alpha1
