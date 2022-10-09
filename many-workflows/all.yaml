@@ -1,6 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::541216676946:role/arkose-demo-many-wf-stage
+  name: arkose-demo
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
   name: operate-workflow-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -30,6 +37,30 @@ rules:
   - clusterworkflowtemplates
   verbs:
   - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: executor-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: executor
+subjects:
+- kind: ServiceAccount
+  name: arkose-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operate-workflow-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operate-workflow-role
+subjects:
+- kind: ServiceAccount
+  name: arkose-demo
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -84,6 +115,56 @@ metadata:
 ---
 apiVersion: v1
 data:
+  count-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: akuity-arkose-demo
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "stage/many-wf/count\
+        /{{workflow.creationTimestamp.Y}}-\
+        {{workflow.creationTimestamp.m}}-\
+        {{workflow.creationTimestamp.d}}\
+        /{{workflow.creationTimestamp.H}}"
+  goodbye-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: akuity-arkose-demo
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "stage/many-wf/goodbyes\
+        /{{workflow.creationTimestamp.Y}}-\
+        {{workflow.creationTimestamp.m}}-\
+        {{workflow.creationTimestamp.d}}\
+        /{{workflow.creationTimestamp.H}}"
+  hello-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: akuity-arkose-demo
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "stage/many-wf/hellos\
+        /{{workflow.creationTimestamp.Y}}-\
+        {{workflow.creationTimestamp.m}}-\
+        {{workflow.creationTimestamp.d}}\
+        /{{workflow.creationTimestamp.H}}"
+kind: ConfigMap
+metadata:
+  name: stage-artifact-repositories
+---
+apiVersion: v1
+data:
+  goodbye-key-prefix: stage/many-wf/goodbyes
+  hello-key-prefix: stage/many-wf/hellos
+  table-name: stage_statistics
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: stage-parameters
+---
+apiVersion: v1
+data:
   DB_HOST: ZGIuaG9zdG5hbWU=
   DB_NAME: ZGF0YWJhc2VfbmFtZQ==
   DB_PASSWORD: c2VjcmV0UGFzc1cwcmQ=
@@ -130,9 +211,11 @@ spec:
         expression: (len(body.Records)==1) && (body.Records[0].eventSource == 'aws:s3')
           && (body.Records[0].eventName startsWith 'ObjectCreated')
       jsonBody: true
-      queue: example-queue
-      region: us-east-1
+      queue: arkose-demo-s3-notification
+      region: us-west-1
       waitTimeSeconds: 20
+  template:
+    serviceAccountName: arkose-demo
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource
@@ -162,12 +245,14 @@ spec:
       - path: body.Records.0.s3.bucket.name
         type: string
         value:
-        - example-bucket-name
+        - akuity-arkose-demo
       - path: body.Records.0.s3.object.key
         type: string
         value:
-        - ^prefix/hellos/
+        - ^stage/many-wf/hellos/
     name: sqs-hello-dep
+  template:
+    serviceAccountName: arkose-demo
   triggers:
   - template:
       argoWorkflow:
@@ -307,26 +392,30 @@ metadata:
 spec:
   arguments:
     parameters:
-    - name: timestamp
-      value: "2000-01-01 12:00:00"
     - name: hello-key-prefix
       valueFrom:
         configMapKeyRef:
           key: hello-key-prefix
-          name: example-parameters
+          name: stage-parameters
     - name: goodbye-key-prefix
       valueFrom:
         configMapKeyRef:
           key: goodbye-key-prefix
-          name: example-parameters
+          name: stage-parameters
     - name: mysql-table-name
       valueFrom:
         configMapKeyRef:
           key: table-name
-          name: example-parameters
+          name: stage-parameters
     - name: mysql-connection-secret
-      value: example-db-connect
+      value: db-connection-stage
+    - name: timestamp
+      value: "2000-01-01 12:00:00"
+  artifactRepositoryRef:
+    configMap: stage-artifact-repositories
+    key: count-s3
   entrypoint: count-all
+  serviceAccountName: arkose-demo
   templates:
   - name: count-all
     steps:
@@ -418,9 +507,10 @@ spec:
     - name: key
       value: example/input.txt
   artifactRepositoryRef:
-    configMap: example-artifact-repositories
-    key: example-goodbye-s3
+    configMap: stage-artifact-repositories
+    key: goodbye-s3
   entrypoint: replace-text
+  serviceAccountName: arkose-demo
   templates:
   - container:
       args:
@@ -458,9 +548,10 @@ spec:
     - name: names
       value: ""
   artifactRepositoryRef:
-    configMap: example-artifact-repositories
-    key: example-hello-s3
+    configMap: stage-artifact-repositories
+    key: hello-s3
   entrypoint: greet
+  serviceAccountName: arkose-demo
   templates:
   - container:
       args:
@@ -574,3 +665,50 @@ spec:
       image: mysql:8-debian
       source: |
         mysql --host=$DB_HOST --port=$DB_PORT --user=$DB_USER --password=$DB_PASSWORD $DB_NAME < /tmp/query.sql
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-connection-stage
+spec:
+  data:
+  - remoteRef:
+      key: arkose-demo/db/many-wf-stage
+      property: host
+    secretKey: DB_HOST
+  - remoteRef:
+      key: arkose-demo/db/many-wf-stage
+      property: port
+    secretKey: DB_PORT
+  - remoteRef:
+      key: arkose-demo/db/many-wf-stage
+      property: database
+    secretKey: DB_NAME
+  - remoteRef:
+      key: arkose-demo/db/many-wf-stage
+      property: user
+    secretKey: DB_USER
+  - remoteRef:
+      key: arkose-demo/db/many-wf-stage
+      property: password
+    secretKey: DB_PASSWORD
+  refreshInterval: 10m
+  secretStoreRef:
+    kind: SecretStore
+    name: demo-db-connect
+  target:
+    name: db-connection-stage
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: demo-db-connect
+spec:
+  provider:
+    aws:
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: arkose-demo
+      region: us-west-1
+      service: SecretsManager
