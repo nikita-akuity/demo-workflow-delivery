@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: single-wf-template
+spec:
+  serviceAccountName: arkose-demo
+  artifactRepositoryRef:
+    configMap: stage-artifact-repositories
+    key: demo-s3
+  arguments:
+    parameters:
+    - {name: mysql-connection-secret, value: db-connection-stage}
+    - name: mysql-table-name
+      valueFrom:
+        configMapKeyRef:
+          name: stage-parameters
+          key: table-name
