@@ -1,6 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::541216676946:role/arkose-demo-single-wf-stage
+  name: arkose-demo
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
   name: operate-workflow-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -30,6 +37,18 @@ rules:
   - clusterworkflowtemplates
   verbs:
   - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: executor-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: executor
+subjects:
+- kind: ServiceAccount
+  name: arkose-demo
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -71,6 +90,35 @@ metadata:
   labels:
     workflows.argoproj.io/configmap-type: Parameter
   name: example-parameters
+---
+apiVersion: v1
+data:
+  demo-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: akuity-arkose-demo
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "stage/single-wf\
+        /{{workflow.creationTimestamp.Y}}-\
+        {{workflow.creationTimestamp.m}}-\
+        {{workflow.creationTimestamp.d}}\
+        /{{workflow.name}}\
+        /{{pod.name}}"
+kind: ConfigMap
+metadata:
+  annotations:
+    workflows.argoproj.io/default-artifact-repository: demo-s3
+  name: stage-artifact-repositories
+---
+apiVersion: v1
+data:
+  table-name: stage_statistics
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: stage-parameters
 ---
 apiVersion: v1
 data:
@@ -321,19 +369,20 @@ metadata:
 spec:
   arguments:
     parameters:
-    - name: input-payload
-      value: '[]'
+    - name: mysql-connection-secret
+      value: db-connection-stage
     - name: mysql-table-name
       valueFrom:
         configMapKeyRef:
           key: table-name
-          name: example-parameters
-    - name: mysql-connection-secret
-      value: example-db-connect
+          name: stage-parameters
+    - name: input-payload
+      value: '[]'
   artifactRepositoryRef:
-    configMap: example-artifact-repositories
-    key: example-s3
+    configMap: stage-artifact-repositories
+    key: demo-s3
   entrypoint: single-wf
+  serviceAccountName: arkose-demo
   templates:
   - name: single-wf
     steps:
@@ -434,3 +483,50 @@ spec:
         templateRef:
           name: container-templates
           template: count
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-connection-stage
+spec:
+  data:
+  - remoteRef:
+      key: arkose-demo/db/single-wf-stage
+      property: host
+    secretKey: DB_HOST
+  - remoteRef:
+      key: arkose-demo/db/single-wf-stage
+      property: port
+    secretKey: DB_PORT
+  - remoteRef:
+      key: arkose-demo/db/single-wf-stage
+      property: database
+    secretKey: DB_NAME
+  - remoteRef:
+      key: arkose-demo/db/single-wf-stage
+      property: user
+    secretKey: DB_USER
+  - remoteRef:
+      key: arkose-demo/db/single-wf-stage
+      property: password
+    secretKey: DB_PASSWORD
+  refreshInterval: 10m
+  secretStoreRef:
+    kind: SecretStore
+    name: demo-db-connect
+  target:
+    name: db-connection-stage
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: demo-db-connect
+spec:
+  provider:
+    aws:
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: arkose-demo
+      region: us-west-1
+      service: SecretsManager
