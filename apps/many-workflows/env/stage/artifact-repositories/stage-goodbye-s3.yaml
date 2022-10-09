@@ -1,0 +1,10 @@
+s3:
+  endpoint: s3.amazonaws.com
+  bucket: akuity-arkose-demo
+  region: us-west-1
+  useSDKCreds: true
+  keyFormat: "stage/many-wf/goodbyes\
+    /{{workflow.creationTimestamp.Y}}-\
+    {{workflow.creationTimestamp.m}}-\
+    {{workflow.creationTimestamp.d}}\
+    /{{workflow.creationTimestamp.H}}"

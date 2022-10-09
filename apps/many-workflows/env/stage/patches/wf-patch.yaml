@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: hello-wf-template
+spec:
+  serviceAccountName: arkose-demo
+  artifactRepositoryRef:
+    configMap: stage-artifact-repositories
+    key: hello-s3
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: goodbye-wf-template
+spec:
+  serviceAccountName: arkose-demo
+  artifactRepositoryRef:
+    configMap: stage-artifact-repositories
+    key: goodbye-s3
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: count-wf-template
+spec:
+  serviceAccountName: arkose-demo
+  artifactRepositoryRef:
+    configMap: stage-artifact-repositories
+    key: count-s3
+  arguments:
+    parameters:
+    - name: hello-key-prefix
+      valueFrom:
+        configMapKeyRef:
+          name: stage-parameters
+          key: hello-key-prefix
+    - name: goodbye-key-prefix
+      valueFrom:
+        configMapKeyRef:
+          name: stage-parameters
+          key: goodbye-key-prefix
+    - name: mysql-table-name
+      valueFrom:
+        configMapKeyRef:
+          name: stage-parameters
+          key: table-name
+    - name: mysql-connection-secret
+      value: db-connection-stage

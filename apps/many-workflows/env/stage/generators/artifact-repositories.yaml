@@ -1,0 +1,11 @@
+apiVersion: builtin
+kind: ConfigMapGenerator
+behavior: create
+metadata:
+  name: stage-artifact-repositories
+options:
+  disableNameSuffixHash: true
+files:
+  - hello-s3=artifact-repositories/stage-hello-s3.yaml
+  - goodbye-s3=artifact-repositories/stage-goodbye-s3.yaml
+  - count-s3=artifact-repositories/stage-count-s3.yaml

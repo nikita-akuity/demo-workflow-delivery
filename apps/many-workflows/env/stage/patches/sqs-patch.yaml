@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: aws-sqs
+spec:
+  template:
+    serviceAccountName: arkose-demo
+  dependencies:
+    - name: sqs-hello-dep
+      eventSourceName: s3-sqs
+      eventName: object-created
+      filters:
+        data:
+        - path: body.Records.0.s3.bucket.name
+          type: string
+          value: ["akuity-arkose-demo"]
+        - path: body.Records.0.s3.object.key
+          type: string
+          value:
+          - "^stage/many-wf/hellos/"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: s3-sqs
+spec:
+  template:
+    serviceAccountName: arkose-demo
+  sqs:
+    object-created:
+      region: us-west-1
+      queue: arkose-demo-s3-notification
