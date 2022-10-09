@@ -7,10 +7,10 @@ resources:
 images:
 - name: count
   newName: ghcr.io/nikita-akuity/count
-  newTag: 0.0.1
+  newTag: 0.1.0
 - name: greetings
   newName: ghcr.io/nikita-akuity/greetings
-  newTag: 0.0.1
+  newTag: 0.1.0
 - name: replace-text
   newName: ghcr.io/nikita-akuity/replace-text
-  newTag: 0.0.1
+  newTag: 0.1.0
