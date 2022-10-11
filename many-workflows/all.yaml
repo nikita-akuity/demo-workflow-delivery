@@ -237,16 +237,6 @@ spec:
   dependencies:
   - eventName: object-created
     eventSourceName: s3-sqs
-    filters:
-      data:
-      - path: body.Records.0.s3.bucket.name
-        type: string
-        value:
-        - akuity-arkose-demo
-      - path: body.Records.0.s3.object.key
-        type: string
-        value:
-        - ^dev/many-wf/hellos/
     name: sqs-hello-dep
   template:
     serviceAccountName: arkose-demo
@@ -581,6 +571,7 @@ spec:
     - name: records
       value: '[]'
   entrypoint: run-goodbyes
+  serviceAccountName: arkose-demo
   templates:
   - name: run-goodbyes
     steps:
