@@ -21,6 +21,21 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
+  name: run-goodbyes-wf-template
+spec:
+  arguments:
+    parameters:
+    - name: bucket
+      value: akuity-arkose-demo
+    - name: prefix
+      valueFrom:
+        configMapKeyRef:
+          name: dev-parameters
+          key: hello-key-prefix
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
   name: count-wf-template
 spec:
   serviceAccountName: arkose-demo
