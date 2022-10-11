@@ -9,15 +9,6 @@ spec:
     - name: sqs-hello-dep
       eventSourceName: s3-sqs
       eventName: object-created
-      filters:
-        data:
-        - path: body.Records.0.s3.bucket.name
-          type: string
-          value: ["akuity-arkose-demo"]
-        - path: body.Records.0.s3.object.key
-          type: string
-          value:
-          - "^dev/many-wf/hellos/"
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: EventSource

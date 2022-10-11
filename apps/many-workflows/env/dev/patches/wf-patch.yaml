@@ -23,6 +23,7 @@ kind: WorkflowTemplate
 metadata:
   name: run-goodbyes-wf-template
 spec:
+  serviceAccountName: arkose-demo
   arguments:
     parameters:
     - name: bucket
