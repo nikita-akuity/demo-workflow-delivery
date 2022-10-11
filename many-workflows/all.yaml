@@ -574,7 +574,6 @@ spec:
     - name: bucket
       value: akuity-arkose-demo
     - name: prefix
-      value: prefix/hellos
       valueFrom:
         configMapKeyRef:
           key: hello-key-prefix
