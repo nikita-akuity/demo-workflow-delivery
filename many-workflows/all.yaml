@@ -578,14 +578,13 @@ spec:
     - - arguments:
           parameters:
           - name: bucket
-            value: '{{items.s3.bucket.name}}'
+            value: '{{item.s3.bucket.name}}'
           - name: key
-            value: '{{items.s3.object.key}}'
+            value: '{{item.s3.object.key}}'
         name: trigger-workflows
         template: trigger-goodbye-workflow
-        when: '{{items.eventSource}} == ''aws:s3'' && {{items.s3.bucket.name}} ==
-          {{workflow.parameters.bucket}} && sprig.hasPrefix(''ObjectCreated'',{{items.eventName}})
-          && sprig.hasPrefix({{workflow.parameters.prefix}},{{items.s3.object.key}})'
+        when: '{{item.eventSource}} == ''aws:s3'' && {{item.s3.bucket.name}} == {{workflow.parameters.bucket}}
+          && sprig.hasPrefix(''ObjectCreated'',{{item.eventName}}) && sprig.hasPrefix({{workflow.parameters.prefix}},{{item.s3.object.key}})'
         withParam: '{{workflow.parameters.records}}'
   - inputs:
       parameters:
