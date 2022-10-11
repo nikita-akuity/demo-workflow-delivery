@@ -1,13 +1,610 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operate-workflow-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: executor
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflowtaskresults
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operate-workflow-role
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflows
+  - workflowtemplates
+  - cronworkflows
+  - clusterworkflowtemplates
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operate-workflow-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operate-workflow-role
+subjects:
+- kind: ServiceAccount
+  name: operate-workflow-sa
+---
+apiVersion: v1
+data:
+  example-goodbye-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: example-bucket-name
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "prefix/goodbyes\
+        /{{workflow.creationTimestamp.Y}}-\
+        {{workflow.creationTimestamp.m}}-\
+        {{workflow.creationTimestamp.d}}\
+        /{{workflow.creationTimestamp.H}}"
+  example-hello-s3: |
+    s3:
+      endpoint: s3.amazonaws.com
+      bucket: example-bucket-name
+      region: us-west-1
+      useSDKCreds: true
+      keyFormat: "prefix/hellos\
+        /{{workflow.creationTimestamp.Y}}-\
+        {{workflow.creationTimestamp.m}}-\
+        {{workflow.creationTimestamp.d}}\
+        /{{workflow.creationTimestamp.H}}"
+kind: ConfigMap
+metadata:
+  name: example-artifact-repositories
+---
+apiVersion: v1
+data:
+  goodbye-key-prefix: prefix/goodbyes
+  hello-key-prefix: prefix/hellos
+  table-name: results
+kind: ConfigMap
+metadata:
+  labels:
+    workflows.argoproj.io/configmap-type: Parameter
+  name: example-parameters
+---
+apiVersion: v1
+data:
+  DB_HOST: ZGIuaG9zdG5hbWU=
+  DB_NAME: ZGF0YWJhc2VfbmFtZQ==
+  DB_PASSWORD: c2VjcmV0UGFzc1cwcmQ=
+  DB_PORT: MzYwMA==
+  DB_USER: ZGF0YWJhc2VfdXNlcg==
+kind: Secret
+metadata:
+  name: example-db-connect
+type: Opaque
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+spec:
+  nats:
+    native:
+      auth: token
+      replicas: 3
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: calendar
+spec:
+  calendar:
+    every-seven-minutes:
+      interval: 7m
+      metadata:
+        names: Hong,Jesse,Alex
+    ten-past-hour:
+      metadata:
+        targetTime: ""
+      schedule: 10 * * * *
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: s3-sqs
+spec:
+  sqs:
+    object-created:
+      jsonBody: true
+      queue: example-queue
+      region: us-east-1
+      waitTimeSeconds: 20
+---
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: webhook
+spec:
+  service:
+    ports:
+    - port: 12000
+      targetPort: 12000
+  webhook:
+    greet:
+      endpoint: /greet
+      method: POST
+      port: "12000"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: aws-sqs
+spec:
+  dependencies:
+  - eventName: object-created
+    eventSourceName: s3-sqs
+    name: sqs-hello-dep
+  triggers:
+  - template:
+      argoWorkflow:
+        operation: submit
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: body.Records
+            dependencyName: sqs-hello-dep
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: run-goodbyes-
+            spec:
+              arguments:
+                parameters:
+                - name: records
+                  value: '[]'
+              workflowTemplateRef:
+                name: run-goodbyes-wf-template
+      conditions: sqs-hello-dep
+      name: replace-trigger
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: count-all
+spec:
+  dependencies:
+  - eventName: ten-past-hour
+    eventSourceName: calendar
+    name: cal-dep
+    transform:
+      script: |-
+        pattern="(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)"
+        year,month,day,hour,min,sec=event.eventTime:match(pattern)
+        target_time=os.time({day=day,month=month,year=year,hour=hour-1,min=min,sec=sec})
+        event.metadata.targetTime=os.date("%Y-%m-%d %H:%M:%S", target_time)
+        return event
+  template:
+    serviceAccountName: operate-workflow-sa
+  triggers:
+  - template:
+      argoWorkflow:
+        operation: submit
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: metadata.targetTime
+            dependencyName: cal-dep
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: count-
+            spec:
+              arguments:
+                parameters:
+                - name: timestamp
+                  value: ""
+              workflowTemplateRef:
+                name: count-wf-template
+      name: count-trigger
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: start-pipeline
+spec:
+  dependencies:
+  - eventName: greet
+    eventSourceName: webhook
+    name: wh-dep
+  - eventName: every-seven-minutes
+    eventSourceName: calendar
+    name: cal-dep
+    transform:
+      script: |-
+        math.randomseed(os.time())
+        ea = {"a","b","c","d","e","f","g","h","i","j","k","l","m","n","0","p"}
+        i = math.random(1,#ea-2)
+        j = math.random(i,#ea)
+        names = ''
+        for n=i,j do
+          names = names..ea[n]
+          if n~=j then
+            names = names..","
+          end
+        end
+        event.metadata.names = names
+        return event
+  template:
+    serviceAccountName: operate-workflow-sa
+  triggers:
+  - template:
+      argoWorkflow:
+        operation: submit
+        parameters:
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: metadata.names
+            dependencyName: cal-dep
+            value: Default,Names
+        - dest: spec.arguments.parameters.0.value
+          src:
+            dataKey: body.names
+            dependencyName: wh-dep
+        source:
+          resource:
+            apiVersion: argoproj.io/v1alpha1
+            kind: Workflow
+            metadata:
+              generateName: greet-
+            spec:
+              arguments:
+                parameters:
+                - name: names
+                  value: to,be,replaced
+              workflowTemplateRef:
+                name: hello-wf-template
+      conditions: wh-dep || cal-dep
+      name: start-pipeline-trigger
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: count-wf-template
+spec:
+  arguments:
+    parameters:
+    - name: timestamp
+      value: "2000-01-01 12:00:00"
+    - name: hello-key-prefix
+      valueFrom:
+        configMapKeyRef:
+          key: hello-key-prefix
+          name: example-parameters
+    - name: goodbye-key-prefix
+      valueFrom:
+        configMapKeyRef:
+          key: goodbye-key-prefix
+          name: example-parameters
+    - name: mysql-table-name
+      valueFrom:
+        configMapKeyRef:
+          key: table-name
+          name: example-parameters
+    - name: mysql-connection-secret
+      value: example-db-connect
+  entrypoint: count-all
+  templates:
+  - name: count-all
+    steps:
+    - - arguments:
+          parameters:
+          - name: key-prefix
+            value: '{{item.prefix}}'
+          - name: string
+            value: '{{item.string}}'
+        name: split
+        template: branch
+        withItems:
+        - prefix: '{{workflow.parameters.hello-key-prefix}}'
+          string: hello
+        - prefix: '{{workflow.parameters.goodbye-key-prefix}}'
+          string: goodbye
+    - - arguments:
+          parameters:
+          - name: timestamp
+            value: '{{workflow.parameters.timestamp}}'
+          - name: table-name
+            value: '{{workflow.parameters.mysql-table-name}}'
+          - name: db-connection-secret
+            value: '{{workflow.parameters.mysql-connection-secret}}'
+          - name: sum-hello
+            value: '{{=jsonpath(steps.split.outputs.parameters.sum,''$[0]'')}}'
+          - name: sum-goodbye
+            value: '{{=jsonpath(steps.split.outputs.parameters.sum,''$[1]'')}}'
+        name: write-result
+        templateRef:
+          name: script-templates
+          template: write-to-db
+  - inputs:
+      parameters:
+      - name: key-prefix
+      - name: string
+    name: branch
+    outputs:
+      parameters:
+      - name: sum
+        valueFrom:
+          parameter: '{{steps.summarize.outputs.result}}'
+    steps:
+    - - arguments:
+          artifacts:
+          - name: folder
+            s3:
+              key: '{{inputs.parameters.key-prefix}}/{{=sprig.replace('' '',''/'',sprig.trunc(13,workflow.parameters.timestamp))}}'
+        name: list-files
+        templateRef:
+          name: script-templates
+          template: list-files
+    - - arguments:
+          artifacts:
+          - name: input-file
+            s3:
+              key: '{{inputs.parameters.key-prefix}}/{{=sprig.replace('' '',''/'',sprig.trunc(13,workflow.parameters.timestamp))}}/{{item}}'
+          parameters:
+          - name: string
+            value: '{{inputs.parameters.string}}'
+        name: count-each
+        templateRef:
+          name: script-templates
+          template: count
+        withParam: '{{steps.list-files.outputs.result}}'
+    - - arguments:
+          parameters:
+          - name: numbers
+            value: '{{steps.count-each.outputs.result}}'
+        name: summarize
+        templateRef:
+          name: script-templates
+          template: sum
+---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   name: goodbye-wf-template
 spec:
-  templates: []
+  arguments:
+    artifacts:
+    - name: input-file
+      s3:
+        bucket: '{{workflow.parameters.bucket}}'
+        key: '{{workflow.parameters.key}}'
+    parameters:
+    - name: bucket
+      value: example-bucket
+    - name: key
+      value: example/input.txt
+  artifactRepositoryRef:
+    configMap: example-artifact-repositories
+    key: example-goodbye-s3
+  entrypoint: replace-text
+  templates:
+  - container:
+      args:
+      - --input-file
+      - /tmp/in.txt
+      - --output-file
+      - /tmp/{{pod.name}}.txt
+      - --search
+      - hello
+      - --replace
+      - goodbye
+      command:
+      - python
+      - rt.py
+      image: ghcr.io/nikita-akuity/replace-text:latest
+    inputs:
+      artifacts:
+      - name: input-file
+        path: /tmp/in.txt
+    name: replace-text
+    outputs:
+      artifacts:
+      - archive:
+          none: {}
+        name: output-file
+        path: /tmp/{{pod.name}}.txt
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   name: hello-wf-template
 spec:
-  templates: []
+  arguments:
+    parameters:
+    - name: names
+      value: ""
+  artifactRepositoryRef:
+    configMap: example-artifact-repositories
+    key: example-hello-s3
+  entrypoint: greet
+  templates:
+  - container:
+      args:
+      - --names
+      - '{{workflow.parameters.names}}'
+      - --greeting
+      - hello
+      - --output-file
+      - /tmp/{{pod.name}}.txt
+      command:
+      - python
+      - greet.py
+      image: ghcr.io/nikita-akuity/greetings:latest
+    name: greet
+    outputs:
+      artifacts:
+      - archive:
+          none: {}
+        name: output-file
+        path: /tmp/{{pod.name}}.txt
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: run-goodbyes-wf-template
+spec:
+  arguments:
+    parameters:
+    - name: records
+      value: '[]'
+    - name: bucket
+      value: example-bucket-name
+    - name: prefix
+      valueFrom:
+        configMapKeyRef:
+          key: hello-key-prefix
+          name: example-parameters
+  entrypoint: run-goodbyes
+  templates:
+  - name: run-goodbyes
+    steps:
+    - - arguments:
+          parameters:
+          - name: bucket
+            value: '{{item.s3.bucket.name}}'
+          - name: key
+            value: '{{item.s3.object.key}}'
+        name: trigger-workflows
+        template: trigger-goodbye-workflow
+        when: '{{item.eventSource}} == ''aws:s3'' && {{item.s3.bucket.name}} == {{workflow.parameters.bucket}}
+          && sprig.hasPrefix(''ObjectCreated'',{{item.eventName}}) && sprig.hasPrefix({{workflow.parameters.prefix}},{{item.s3.object.key}})'
+        withParam: '{{workflow.parameters.records}}'
+  - inputs:
+      parameters:
+      - name: bucket
+      - name: key
+      - default: goodbye-wf-template
+        name: workflowtemplate
+    name: trigger-goodbye-workflow
+    resource:
+      action: create
+      manifest: |
+        apiVersion: argoproj.io/v1alpha1
+        kind: Workflow
+        metadata:
+          generateName: goodbye-
+        spec:
+          arguments:
+            parameters:
+            - {name: bucket, value: {{inputs.parameters.bucket}}}
+            - {name: key, value: {{inputs.parameters.key}}}
+          workflowTemplateRef:
+            name: {{inputs.parameters.workflowtemplate}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: script-templates
+spec:
+  templates:
+  - inputs:
+      artifacts:
+      - name: folder
+        path: /workdir
+    name: list-files
+    script:
+      command:
+      - python
+      image: python:3
+      source: |
+        import sys,json
+        from os import listdir
+        from os.path import isfile, join
+        onlyfiles = [f for f in listdir("/workdir") if isfile(join("/workdir", f))]
+        json.dump(onlyfiles, sys.stdout)
+  - container:
+      args:
+      - --input-file
+      - /tmp/in.txt
+      - --string
+      - '{{inputs.parameters.string}}'
+      command:
+      - python
+      - count.py
+      image: ghcr.io/nikita-akuity/count:latest
+    inputs:
+      artifacts:
+      - name: input-file
+        path: /tmp/in.txt
+      parameters:
+      - default: default
+        name: string
+    name: count
+  - inputs:
+      parameters:
+      - default: '["0","0","0"]'
+        name: numbers
+    name: sum
+    script:
+      command:
+      - python
+      image: python:3
+      source: |
+        import json
+        numbers = json.loads('{{inputs.parameters.numbers}}')
+        print(sum(map(int,numbers)))
+  - inputs:
+      artifacts:
+      - name: sql
+        path: /tmp/query.sql
+        raw:
+          data: |
+            CREATE TABLE IF NOT EXISTS {{inputs.parameters.table-name}} (
+              Id int NOT NULL AUTO_INCREMENT,
+              WorkflowName varchar(255) NOT NULL,
+              TargetDateTime datetime NOT NULL,
+              SumHello int(32),
+              SumGoodbye int(32),
+              PRIMARY KEY (Id)
+            );
+            INSERT INTO {{inputs.parameters.table-name}} (WorkflowName, TargetDateTime, SumHello, SumGoodbye)
+            VALUES (
+              '{{workflow.name}}',
+              '{{inputs.parameters.timestamp}}',
+              {{inputs.parameters.sum-hello}},
+              {{inputs.parameters.sum-goodbye}}
+            );
+      parameters:
+      - name: table-name
+      - name: db-connection-secret
+      - default: "2000-01-01 12:00:00"
+        name: timestamp
+      - default: "NULL"
+        name: sum-hello
+      - default: "NULL"
+        name: sum-goodbye
+    name: write-to-db
+    script:
+      command:
+      - bash
+      envFrom:
+      - secretRef:
+          name: '{{inputs.parameters.db-connection-secret}}'
+      image: mysql:8-debian
+      source: |
+        mysql --host=$DB_HOST --port=$DB_PORT --user=$DB_USER --password=$DB_PASSWORD $DB_NAME < /tmp/query.sql
